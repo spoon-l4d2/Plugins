@@ -225,7 +225,7 @@ public checkWhitelist(String:sample[256]){
 	new itemsInArray = CountValidItemsInArray(a_whitelistSoundPaths) + 1;	
 	if (itemsInArray > 0) {
 		for (new i = 0; i < itemsInArray; i++){
-			if (StrContains(sample, a_whitelistSoundPaths[i], false) > -1) {
+			if (StrContains(a_whitelistSoundPaths[i], sample, false) > -1) {
 				return 0;
 			}
 		}
