@@ -136,7 +136,7 @@ public checkSound(String:sample[256]) {
 	
 	// Alarms
 	if (ConVarBoolValue(h_Alarms)) {
-		if (StrContains(sample, "alarm", true) > -1)
+		if ((StrContains(sample, "alarm", true) > -1) || (StrContains(sample, "rackmove1", true) > -1))
 		{
 			return checkWhitelist(sample);
 		}
@@ -184,7 +184,7 @@ public checkSound(String:sample[256]) {
 	
 	// Lifts / Event
 	if (ConVarBoolValue(h_Lifts)) {
-		if ((StrContains(sample, "c6_bridgelower_seg01", true) > -1) || (StrContains(sample, "garage_lift_loop", true) > -1) || (StrContains(sample, "rackmove1", true) > -1))
+		if ((StrContains(sample, "c6_bridgelower_seg01", true) > -1) || (StrContains(sample, "garage_lift_loop", true) > -1) || (StrContains(sample, "floodgate", true) > -1))
 		{
 			return checkWhitelist(sample);
 		}

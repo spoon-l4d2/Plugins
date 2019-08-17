@@ -310,7 +310,12 @@ public void EnableWitch(){
 
 // ------ Admin Command ------
 public Action:ForceWitchCommand(client, args){
-
+	// Check if round is live
+	if (!IsInReady())  {
+		CPrintToChat(client, "{green}<{blue}WitchVoter{green}>{default} The Witch can only be toggled during ready-up.");
+		return Plugin_Handled;
+	}
+	
 	// Get Admin Name
 	new String:clientName[32];
 	GetClientName(client, clientName, sizeof(clientName));
