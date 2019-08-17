@@ -24,6 +24,24 @@
 #define _readyup_included_
 
 /**
+ * Returns the index of a item in the footer array.
+ * Does not have to be exact. The footer only needs to contain the input, does not need to match.
+ *
+ * @param string    String to search for
+ * @return          Int index of string
+ */
+native int FindIndexOfFooterString(const String:string[]);
+
+/**
+ * Edits a footer string on the ready-up panel at the specified index.
+ *
+ * @param index  	Index of string to edit
+ * @param string    String to add to the footer
+ * @return          True if the string was added, false otherwise
+ */
+native bool:EditFooterStringAtIndex(int index, const String:string[]);
+
+/**
  * Adds the string to the bottom of the ready-up panel.
  * String must be <=65 characters including the null byte.
  * String will be entirely added or not added, no truncation.

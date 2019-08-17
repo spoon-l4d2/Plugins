@@ -17,6 +17,7 @@ new Handle:g_hVsBossBuffer;
 new bool:g_bWitchEnabled;
 new bool:g_bOnCooldown;
 new Float:g_fWitchFlow;
+new Float:g_fTankFlow;
 new Handle:g_hStaticMaps;
 new String:g_CurrentMap[64];
 new Handle:g_hWitchVote = INVALID_HANDLE;
@@ -25,7 +26,7 @@ public Plugin:myinfo =
 {
 	name = "[L4D2] Witch Toggler",
 	author = "Spoon",
-	version = "1.1.2",
+	version = "1.2.6",
 	description = "Allows players to vote on witch spawning at the start of a map. Created for NextMod."
 };
 
@@ -62,6 +63,12 @@ public bool:ConVarBoolValue(Handle:cvar) {
 		return false;
 	}
 }
+stock Float:GetTankFlow(round)
+{
+	return L4D2Direct_GetVSTankFlowPercent(round) -
+		( Float:GetConVarInt(g_hVsBossBuffer) / L4D2Direct_GetMapMaxFlowDistance() );
+}
+
 stock Float:GetWitchFlow(round)
 {
 	return L4D2Direct_GetVSWitchFlowPercent(round) - Float:GetConVarInt(g_hVsBossBuffer) / L4D2Direct_GetMapMaxFlowDistance();
@@ -247,18 +254,23 @@ public VoteResultHandler(Handle:vote, num_votes, num_clients, const client_info[
 					CPrintToChatAll("{green}<{blue}WitchVoter{green}>{default} The Witch has been {green}disabled{default}!");
 					
 					// Update boss percents
-					UpdateBossPercents();					
+					UpdateBossPercents();	
+					UpdateRUP();			
 					return;			
 					
 				} else {
 					// Set Vote Title
 					DisplayBuiltinVotePass(vote, "Enabling the Witch...");			
 					
+					// Enable the Witch
+					EnableWitch();
+					
 					// Print result to all
 					CPrintToChatAll("{green}<{blue}WitchVoter{green}>{default} The Witch has been {green}enabled{default}!");
 					
 					// Update boss percents
 					UpdateBossPercents();
+					UpdateRUP();
 					return;
 				}
 			}
@@ -271,10 +283,33 @@ public VoteResultHandler(Handle:vote, num_votes, num_clients, const client_info[
 }
 // ------------
 
+// ------ Update RUP Menu ------
+public void UpdateRUP(){
+	new String:newFooter[65];
+	new tankPercent;
+	new witchPercent;
+	tankPercent = RoundToNearest(g_fTankFlow*100.0);
+	witchPercent = RoundToNearest(g_fWitchFlow*100.0);
+	
+	// Usually the index of Boss Percents Will be 1, but just in case lets check.
+	int index;
+	index = FindIndexOfFooterString("Tank:");
+	
+	if (g_bWitchEnabled){
+		Format(newFooter, sizeof(newFooter), "Tank: %d%%, Witch: %d%%", tankPercent, witchPercent);		
+	} else {
+		Format(newFooter, sizeof(newFooter), "Tank: %d%%, Witch: Disabled", tankPercent);
+	}
+	
+	EditFooterStringAtIndex(index, newFooter);
+}
+
+
 // ------ Witch Enable/Disable Methods ------
 public void DisableWitch(){			
 	// Store the Flow before disabling - doing it here incase it's changed via !voteboss'
 	g_fWitchFlow = GetWitchFlow(1);
+	g_fTankFlow = GetTankFlow(1);
 	
 	// Set Witch to Spawn as false, and set witch flow to 0
 	L4D2Direct_SetVSWitchFlowPercent(0, 0.0);
@@ -350,4 +385,5 @@ public Action:ForceWitchCommand(client, args){
 		UpdateBossPercents();	
 		
 	}
+	return Plugin_Handled;
 }

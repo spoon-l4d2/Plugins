@@ -10,3 +10,7 @@ Sounds Blocker is a plugin that allows you to block certain sounds from being pl
 The Witch Toggle plugin allows players to vote on whether or not they want the witch to spawn. Admins can force the toggle using `sm_forcewitch` or `!forcewitch`.
 
 ---
+### readyup.smx
+Custom version of readyup that allows more control over the footers. Creates new Natives that allow you to edit a footer.
+
+---
