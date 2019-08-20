@@ -14,3 +14,12 @@ The Witch Toggle plugin allows players to vote on whether or not they want the w
 Custom version of readyup that allows more control over the footers. Creates new Natives that allow you to edit a footer.
 
 ---
+
+### l4d2_boss_percents.smx
+This is my custom version of both the `l4d_boss_percent.smx` plugin, as well as the vote boss plugin. It is updated to work with my **Witch Voter** plugin, as well as my custom ready up plugin. Meaning when you change boss percents, they will no longer stack on top of each other on the ready up panel! Boss vote commands are however slightly different now.
+
+######	For admins:
+When you type `!voteboss x y` it will no longer force those boss percents, it will call a vote like it does for any other player. If you wish to force boss percents, you can use the following commands:
+
+`!fwitch x` This will force the Witch's spawn point to the specified percent.
+`!ftank x` This will force the Tank's spawn point to the specified percent.

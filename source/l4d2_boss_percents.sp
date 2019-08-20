@@ -536,15 +536,16 @@ public Action:DKRWorkaround(Handle:event, String:name[], bool:dontBroadcast)
 */
 
 // This method will return the Tank flow for a specified round
-public Float:GetTankFlow(round)
+stock Float:GetTankFlow(round)
 {
-	return L4D2Direct_GetVSTankFlowPercent(round) - GetConVarInt(g_hVsBossBuffer) / L4D2Direct_GetMapMaxFlowDistance();
+	return L4D2Direct_GetVSTankFlowPercent(round) -
+		( Float:GetConVarInt(g_hVsBossBuffer) / L4D2Direct_GetMapMaxFlowDistance() );
 }
 
-// This method will return the Witch flow for a specified round
-public Float:GetWitchFlow(round)
+stock Float:GetWitchFlow(round)
 {
-	return L4D2Direct_GetVSWitchFlowPercent(round) - GetConVarInt(g_hVsBossBuffer) / L4D2Direct_GetMapMaxFlowDistance();
+	return L4D2Direct_GetVSWitchFlowPercent(round) -
+		( Float:GetConVarInt(g_hVsBossBuffer) / L4D2Direct_GetMapMaxFlowDistance() );
 }
 
 /* 
@@ -962,6 +963,13 @@ public Action:VoteBossCmd(client, args)
 		CPrintToChat(client, "{blue}<{green}BossVote{blue}>{default} Witch spawn is static and can not be changed on this map.");
 	}
 	
+	// Check if percent is within limits
+	if ((bv_iWitch > 100 || bv_iWitch < 0) || (bv_iTank > 100 || bv_iTank < 0))
+	{
+		CPrintToChat(client, "{blue}<{green}BossVote{blue}>{default} Boss percents need to be between {olive}0{default} and {olive}100{default}.");
+		return;
+	}
+	
 	// Check if a new vote is allowed to be called
 	if (IsNewBuiltinVoteAllowed() && !IsBuiltinVoteInProgress())
 	{
@@ -1094,7 +1102,7 @@ public SetWitchPercent(int percent)
 	}
 	else
 	{
-		p_newPercent = (p_newPercent/100) + 0.08; // Some weird bug fix
+		p_newPercent = (p_newPercent/100); // Some weird bug fix
 		L4D2Direct_SetVSWitchFlowPercent(0, p_newPercent);
 		L4D2Direct_SetVSWitchFlowPercent(1, p_newPercent);
 		L4D2Direct_SetVSWitchToSpawnThisRound(0, true);
@@ -1123,7 +1131,7 @@ public SetTankPercent(int percent)
 	}
 	else
 	{
-		p_newPercent = (p_newPercent/100) + 0.08; // Some weird bug fix
+		p_newPercent = (p_newPercent/100); // Some weird bug fix
 		L4D2Direct_SetVSTankFlowPercent(0, p_newPercent);
 		L4D2Direct_SetVSTankFlowPercent(1, p_newPercent);
 		L4D2Direct_SetVSTankToSpawnThisRound(0, true);
@@ -1174,6 +1182,13 @@ public Action:ForceTankCommand(client, args)
 	int p_iRequestedPercent;
 	p_iRequestedPercent = StringToInt(bv_sTank);
 	
+	// Check if percent is within limits
+	if (p_iRequestedPercent > 100 || p_iRequestedPercent < 0)
+	{
+		CPrintToChat(client, "{blue}<{green}BossVote{blue}>{default} Boss percent needs to be between {olive}0{default} and {olive}100{default}.");
+		return;
+	}
+	
 	// Set the boss
 	SetTankPercent(p_iRequestedPercent);
 	
@@ -1223,6 +1238,13 @@ public Action:ForceWitchCommand(client, args)
 	// Convert it to in int boy
 	int p_iRequestedPercent;
 	p_iRequestedPercent = StringToInt(bv_sWitch);
+	
+	// Check if percent is within limits
+	if (p_iRequestedPercent > 100 || p_iRequestedPercent < 0)
+	{
+		CPrintToChat(client, "{blue}<{green}BossVote{blue}>{default} Boss percent needs to be between {olive}0{default} and {olive}100{default}.");
+		return;
+	}
 	
 	// Set the boss
 	SetWitchPercent(p_iRequestedPercent);
