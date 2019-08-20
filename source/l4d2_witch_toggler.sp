@@ -17,16 +17,15 @@ new Handle:g_hVsBossBuffer;
 new bool:g_bWitchEnabled;
 new bool:g_bOnCooldown;
 new Float:g_fWitchFlow;
-new Float:g_fTankFlow;
-new Handle:g_hStaticMaps;
-new String:g_CurrentMap[64];
 new Handle:g_hWitchVote = INVALID_HANDLE;
+new Float:EntityOrigin[3];
+new iEnt;
 
 public Plugin:myinfo =
 {
 	name = "[L4D2] Witch Toggler",
 	author = "Spoon",
-	version = "1.2.6",
+	version = "2.2.9",
 	description = "Allows players to vote on witch spawning at the start of a map. Created for NextMod."
 };
 
@@ -34,14 +33,10 @@ public OnPluginStart()
 {
 	// Variable Setting
 	g_hVsBossBuffer = FindConVar("versus_boss_buffer");
-	g_hStaticMaps = CreateTrie();
 	
 	// ConVars
 	cvar_Announce = CreateConVar("swt_command_announce", "1", "Enables/Disables the 'how to use command' message that is displayed to a user upon joining the server.");
 	cvar_Cooldown = CreateConVar("swt_command_cooldown", "15", "Command cooldown length.");
-	
-	// Server Commands
-	RegServerCmd("static_witch_map", StaticWitch_Command);
 	
 	// Console Commands
 	RegConsoleCmd("sm_votewitch", VoteWitchCommand);
@@ -51,10 +46,45 @@ public OnPluginStart()
 	RegAdminCmd("sm_forcewitch", ForceWitchCommand, ADMFLAG_BAN);
 	
 	// Events
-	HookEvent("round_start", RoundStart_Event, EventHookMode_PostNoCopy);	
+	HookEvent("round_start", RoundStart_Event, EventHookMode_PostNoCopy);
 }
 
-// ------ Misc Method(s) ------
+// ========================================================
+// ======================== Events ========================
+// ========================================================
+
+public RoundStart_Event(Handle:event, const String:name[], bool:dontBroadcast)
+{	
+	if (InSecondHalfOfRound())
+		CreateTimer(8.0, DisableRoundTwoStaticWitch);
+}
+
+public OnMapStart()
+{
+	// Set Variable
+	g_bWitchEnabled = true;
+}
+
+// ========================================================
+// ========================= Misc =========================
+// ========================================================
+
+public void OnUpdateBosses(){
+	new Float:newFlow = GetWitchFlow(0);
+	
+	if (g_bWitchEnabled == false) {
+		if (newFlow > 0) {
+			g_fWitchFlow = newFlow;
+			if (InSecondHalfOfRound()) {
+				DisableWitch();
+			} else {
+				EnableWitch();
+				CPrintToChatAll("{green}<{blue}WitchVoter{green}>{default} The Witch has been {green}enabled{default}!");
+			}
+		}
+	}
+}
+
 public bool:ConVarBoolValue(Handle:cvar) {
 	new value = GetConVarInt(cvar);
 	if (value == 1) {
@@ -63,16 +93,12 @@ public bool:ConVarBoolValue(Handle:cvar) {
 		return false;
 	}
 }
-stock Float:GetTankFlow(round)
-{
-	return L4D2Direct_GetVSTankFlowPercent(round) -
-		( Float:GetConVarInt(g_hVsBossBuffer) / L4D2Direct_GetMapMaxFlowDistance() );
-}
 
 stock Float:GetWitchFlow(round)
 {
 	return L4D2Direct_GetVSWitchFlowPercent(round) - Float:GetConVarInt(g_hVsBossBuffer) / L4D2Direct_GetMapMaxFlowDistance();
 }
+
 public void PutOnCooldown() {
 	// Set OnCoolDown to True
 	g_bOnCooldown = true;
@@ -90,31 +116,11 @@ public Action:CooldownReset(Handle:timer){
 	g_bOnCooldown = false;
 	return Plugin_Handled;
 }
-// ------------
 
-// ------ Static Map Adding ------
-public Action:StaticWitch_Command(args)
-{
-	decl String:mapname[64];
-	GetCmdArg(1, mapname, sizeof(mapname));
-	SetTrieValue(g_hStaticMaps, mapname, true);
-}
+// ========================================================
+// ===================== Annonuce Cmd =====================
+// ========================================================
 
-// ------ Round Start Event ------
-public RoundStart_Event(Handle:event, const String:name[], bool:dontBroadcast)
-{
-	// Set Variable
-	g_bWitchEnabled = true;
-	
-	// Set Witch Spawn to 'true'
-	L4D2Direct_SetVSWitchToSpawnThisRound(0, true);
-	L4D2Direct_SetVSWitchToSpawnThisRound(1, true);
-	
-	// Get Current Map
-	GetCurrentMap(g_CurrentMap, sizeof(g_CurrentMap));
-}
-
-// ------ Announce Command -----
 public void OnClientPutInServer(int client)
 {
 	if (ConVarBoolValue(cvar_Announce))
@@ -129,9 +135,11 @@ public Action:WitchCMDMessage(Handle timer, any serial)
 	}
 	return Plugin_Handled;
 }
-// ------
 
-// ------ Witch Vote Command ------
+// ========================================================
+// ================== Witch Voting Command ================
+// ========================================================
+
 public Action:VoteWitchCommand(client, args){
 
 	// Just In Case :)
@@ -170,7 +178,10 @@ public Action:VoteWitchCommand(client, args){
 	return Plugin_Handled;
 }
 
-// ------ Witch Vote Stuff ------
+// ========================================================
+// ===================== Witch Voting =====================
+// ========================================================
+
 bool:StartWitchVote(client)
 {
 	if (!IsBuiltinVoteInProgress())
@@ -192,7 +203,7 @@ bool:StartWitchVote(client)
 		g_hWitchVote = CreateBuiltinVote(VoteActionHandler, BuiltinVoteType_Custom_YesNo, BuiltinVoteAction_Cancel | BuiltinVoteAction_VoteEnd | BuiltinVoteAction_End);	
 		
 		if (g_bWitchEnabled) {
-			g_fWitchFlow = GetWitchFlow(1);
+			g_fWitchFlow = GetWitchFlow(0);
 			Format(sBuffer, sizeof(sBuffer), "Disable the Witch on Current Map");	
 		} else {
 			Format(sBuffer, sizeof(sBuffer), "Enable the Witch on Current Map");	
@@ -252,10 +263,7 @@ public VoteResultHandler(Handle:vote, num_votes, num_clients, const client_info[
 			
 					// Print result to all
 					CPrintToChatAll("{green}<{blue}WitchVoter{green}>{default} The Witch has been {green}disabled{default}!");
-					
-					// Update boss percents
-					UpdateBossPercents();	
-					UpdateRUP();			
+			
 					return;			
 					
 				} else {
@@ -267,10 +275,7 @@ public VoteResultHandler(Handle:vote, num_votes, num_clients, const client_info[
 					
 					// Print result to all
 					CPrintToChatAll("{green}<{blue}WitchVoter{green}>{default} The Witch has been {green}enabled{default}!");
-					
-					// Update boss percents
-					UpdateBossPercents();
-					UpdateRUP();
+
 					return;
 				}
 			}
@@ -281,58 +286,66 @@ public VoteResultHandler(Handle:vote, num_votes, num_clients, const client_info[
 	DisplayBuiltinVoteFail(vote, BuiltinVoteFail_Loses);
 	return;
 }
-// ------------
 
-// ------ Update RUP Menu ------
-public void UpdateRUP(){
-	new String:newFooter[65];
-	new tankPercent;
-	new witchPercent;
-	tankPercent = RoundToNearest(g_fTankFlow*100.0);
-	witchPercent = RoundToNearest(g_fWitchFlow*100.0);
-	
-	// Usually the index of Boss Percents Will be 1, but just in case lets check.
-	int index;
-	index = FindIndexOfFooterString("Tank:");
-	
-	if (g_bWitchEnabled){
-		Format(newFooter, sizeof(newFooter), "Tank: %d%%, Witch: %d%%", tankPercent, witchPercent);		
-	} else {
-		Format(newFooter, sizeof(newFooter), "Tank: %d%%, Witch: Disabled", tankPercent);
+
+// ========================================================
+// =============== Witch Controling Methods ===============
+// ========================================================
+
+public Action:DisableRoundTwoStaticWitch(Handle:timer) {
+	if (InSecondHalfOfRound())
+	{
+		if (g_bWitchEnabled == false) 
+		{
+			if (IsStaticWitchMap()) 
+			{
+				GetEmOuttaHea(FindWitchEntity());
+			}
+		}
 	}
-	
-	EditFooterStringAtIndex(index, newFooter);
 }
 
-
-// ------ Witch Enable/Disable Methods ------
-public void DisableWitch(){			
-	// Store the Flow before disabling - doing it here incase it's changed via !voteboss'
-	g_fWitchFlow = GetWitchFlow(1);
-	g_fTankFlow = GetTankFlow(1);
+public void DisableWitch(){
+	// Store the Flow before disabling - doing it here incase it's changed via !voteboss
+	if (!IsDarkCarniRemix())
+	{
+		g_fWitchFlow = GetWitchFlow(0);
+	}
 	
-	// Set Witch to Spawn as false, and set witch flow to 0
+	// If it's a static map move the witch out of bounds
+	if (IsStaticWitchMap()) {
+		int index;
+		index = FindWitchEntity();
+		if (index > -1)
+			GetEmOuttaHea(index);
+	}
+	
+	// Set Flow to 0
 	L4D2Direct_SetVSWitchFlowPercent(0, 0.0);
 	L4D2Direct_SetVSWitchFlowPercent(1, 0.0);
+
+	// Set Witch to Spawn False
 	L4D2Direct_SetVSWitchToSpawnThisRound(0, false);
 	L4D2Direct_SetVSWitchToSpawnThisRound(1, false);
 	
 	// Set Witch Enabled to false
 	g_bWitchEnabled = false;
+	
+	// Update Boss Percents
+	SetWitchDisabled(1);
+	UpdateBossPercents();
 }
 
 public void EnableWitch(){
-
-	// For Storing our trie value
-	new tempValue;
+	// Set Witch Flow - If non-static
+	if (!IsStaticWitchMap()){
 	
-	// Check if map has static witch spawn
-	if (!GetTrieValue(g_hStaticMaps, g_CurrentMap, tempValue))
-	{
-		// Non-Static Witch Map - Set Flow
 		L4D2Direct_SetVSWitchFlowPercent(0, g_fWitchFlow);
-		L4D2Direct_SetVSWitchFlowPercent(1, g_fWitchFlow);					
-	}
+		L4D2Direct_SetVSWitchFlowPercent(1, g_fWitchFlow);	
+		
+	} else {
+		BringEmBackHea(FindWitchEntity(), EntityOrigin);
+	}	
 	
 	// Enable Witch Spawning
 	L4D2Direct_SetVSWitchToSpawnThisRound(0, true);
@@ -340,14 +353,26 @@ public void EnableWitch(){
 	
 	// Set Witch Enabled to true
 	g_bWitchEnabled = true;
+	
+	// Update Boss Percents
+	SetWitchDisabled(0);
+	UpdateBossPercents();
 }
-// ------------
 
-// ------ Admin Command ------
+// ========================================================
+// ==================== Admin Commands ====================
+// ========================================================
+
 public Action:ForceWitchCommand(client, args){
 	// Check if round is live
 	if (!IsInReady())  {
 		CPrintToChat(client, "{green}<{blue}WitchVoter{green}>{default} The Witch can only be toggled during ready-up.");
+		return Plugin_Handled;
+	}
+	
+	// Check if round is in second half
+	if (InSecondHalfOfRound()) {
+		CPrintToChat(client, "{green}<{blue}WitchVoter{green}>{default} The Witch can only be toggled at the start of a map.");
 		return Plugin_Handled;
 	}
 	
@@ -363,13 +388,6 @@ public Action:ForceWitchCommand(client, args){
 		// Print result to all
 		CPrintToChatAll("{green}<{blue}WitchVoter{green}>{default} The Witch has been {green}disabled{default} by Admin {blue}%s{default}!", clientName);
 		
-		// Set Witch Enabled to true
-		g_bWitchEnabled = false;
-		
-		// Update boss percents
-		UpdateBossPercents();	
-		
-		
 	} else {
 	
 		// Enable Witch
@@ -378,12 +396,44 @@ public Action:ForceWitchCommand(client, args){
 		// Print result to all
 		CPrintToChatAll("{green}<{blue}WitchVoter{green}>{default} The Witch has been {green}enabled{default} by Admin {blue}%s{default}!", clientName);
 		
-		// Set Witch Enabled to true
-		g_bWitchEnabled = true;
-		
-		// Update boss percents
-		UpdateBossPercents();	
-		
 	}
 	return Plugin_Handled;
+}
+// ========================================================
+// ==================== Entity Control 1 ==================
+// ========================================================
+
+public Action:L4D_OnSpawnWitch(const Float:vector[3], const Float:qangle[3])
+{
+	EntityOrigin = vector;
+}
+
+public Action:L4D_OnSpawnWitchBride(const Float:vector[3], const Float:qangle[3])
+{
+	EntityOrigin = vector;
+}
+
+// ========================================================
+// ===================== Entity Control ===================
+// ========================================================
+
+public int FindWitchEntity() {
+	while (iEnt = FindEntityByClassname(-1, "witch"))
+    {
+		if (!IsValidEntity(iEnt)) continue;
+		
+		return iEnt;
+    }
+	return -1;
+}
+
+// Move Witch Out Of Bounds -- Hacky, but works.
+public GetEmOuttaHea(int ent){
+	new Float:dest[3] = {-9999.0, -9999.0, -9999.0};
+	TeleportEntity(ent, dest, NULL_VECTOR, NULL_VECTOR);
+}
+
+// Move Witch Back
+public BringEmBackHea(int ent, Float:dest[3]){
+	TeleportEntity(ent, dest, NULL_VECTOR, NULL_VECTOR);
 }

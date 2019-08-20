@@ -1,5 +1,6 @@
 #pragma semicolon 1
 
+#include <builtinvotes>
 #include <sourcemod>
 #include <sdktools>
 #include <left4downtown>
@@ -46,6 +47,7 @@ new Handle:god;
 new Handle:sb_stop;
 new Handle:survivor_limit;
 new Handle:z_max_player_zombies;
+new Handle:sv_infinite_ammo;
 
 new Handle:casterTrie;
 new Handle:liveForward;
@@ -81,6 +83,7 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 	CreateNative("AddStringToReadyFooter", Native_AddStringToReadyFooter);
 	CreateNative("EditFooterStringAtIndex", Native_EditFooterStringAtIndex);
 	CreateNative("FindIndexOfFooterString", Native_FindIndexOfFooterString);
+	CreateNative("GetFooterStringAtIndex", Native_GetFooterStringAtIndex);
 	CreateNative("IsInReady", Native_IsInReady);
 	CreateNative("IsClientCaster", Native_IsClientCaster);
 	CreateNative("IsIDCaster", Native_IsIDCaster);
@@ -91,8 +94,8 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 
 public OnPluginStart()
 {
-	CreateConVar("l4d_ready_enabled", "1", "This cvar doesn't do anything, but if it is 0 the logger wont log this game.", FCVAR_PLUGIN, true, 0.0, true, 1.0);
-	l4d_ready_cfg_name = CreateConVar("l4d_ready_cfg_name", "", "Configname to display on the ready-up panel", FCVAR_PLUGIN|FCVAR_PRINTABLEONLY);
+	CreateConVar("l4d_ready_enabled", "1", "This cvar doesn't do anything, but if it is 0 the logger wont log this game.", 0, true, 0.0, true, 1.0);
+	l4d_ready_cfg_name = CreateConVar("l4d_ready_cfg_name", "", "Configname to display on the ready-up panel");
 	
 	if (FindConVar("sn_main_name") != INVALID_HANDLE){
 		l4d_ready_serv_name = FindConVar("sn_main_name");
@@ -100,10 +103,10 @@ public OnPluginStart()
 		l4d_ready_serv_name = FindConVar("hostname");
 	}
 	
-	l4d_ready_disable_spawns = CreateConVar("l4d_ready_disable_spawns", "0", "Prevent SI from having spawns during ready-up", FCVAR_PLUGIN, true, 0.0, true, 1.0);
-	l4d_ready_survivor_freeze = CreateConVar("l4d_ready_survivor_freeze", "1", "Freeze the survivors during ready-up.  When unfrozen they are unable to leave the saferoom but can move freely inside", FCVAR_PLUGIN, true, 0.0, true, 1.0);
-	l4d_ready_max_players = CreateConVar("l4d_ready_max_players", "12", "Maximum number of players to show on the ready-up panel.", FCVAR_PLUGIN, true, 0.0, true, MAXPLAYERS+1.0);
-	l4d_ready_delay = CreateConVar("l4d_ready_delay", "5", "Number of seconds to count down before the round goes live.", FCVAR_PLUGIN, true, 0.0);
+	l4d_ready_disable_spawns = CreateConVar("l4d_ready_disable_spawns", "0", "Prevent SI from having spawns during ready-up", 0, true, 0.0, true, 1.0);
+	l4d_ready_survivor_freeze = CreateConVar("l4d_ready_survivor_freeze", "1", "Freeze the survivors during ready-up.  When unfrozen they are unable to leave the saferoom but can move freely inside", 0, true, 0.0, true, 1.0);
+	l4d_ready_max_players = CreateConVar("l4d_ready_max_players", "12", "Maximum number of players to show on the ready-up panel.", 0, true, 0.0, true, MAXPLAYERS+1.0);
+	l4d_ready_delay = CreateConVar("l4d_ready_delay", "5", "Number of seconds to count down before the round goes live.", 0, true, 0.0);
 	l4d_ready_enable_sound = CreateConVar("l4d_ready_enable_sound", "1", "Enable sound during countdown & on live");
 	l4d_ready_live_sound = CreateConVar("l4d_ready_live_sound", "buttons/blip2.wav", "The sound that plays when a round goes live");
 	l4d_ready_chuckle = CreateConVar("l4d_ready_chuckle", "0", "Enable random moustachio chuckle during countdown");
@@ -121,6 +124,7 @@ public OnPluginStart()
 	sb_stop = FindConVar("sb_stop");
 	survivor_limit = FindConVar("survivor_limit");
 	z_max_player_zombies = FindConVar("z_max_player_zombies");
+	sv_infinite_ammo = FindConVar("sv_infinite_ammo");
 
 	RegAdminCmd("sm_caster", Caster_Cmd, ADMFLAG_BAN, "Registers a player as a caster so the round will not go live unless they are ready");
 	RegAdminCmd("sm_forcestart", ForceStart_Cmd, ADMFLAG_BAN, "Forces the round to start regardless of player ready status.  Players can unready to stop a force");
@@ -133,7 +137,7 @@ public OnPluginStart()
 	RegConsoleCmd("sm_toggleready", ToggleReady_Cmd, "Toggle your ready status");
 	RegConsoleCmd("sm_unready", Unready_Cmd, "Mark yourself as not ready if you have set yourself as ready");
 	RegConsoleCmd("sm_return", Return_Cmd, "Return to a valid saferoom spawn if you get stuck during an unfrozen ready-up period");
-    RegConsoleCmd("sm_cast", Cast_Cmd, "Registers the calling player as a caster so the round will not go live unless they are ready");
+	RegConsoleCmd("sm_cast", Cast_Cmd, "Registers the calling player as a caster so the round will not go live unless they are ready");
 	RegServerCmd("sm_resetcasters", ResetCaster_Cmd, "Used to reset casters between matches.  This should be in confogl_off.cfg or equivalent for your system");
 	RegServerCmd("sm_add_caster_id", AddCasterSteamID_Cmd, "Used for adding casters to the whitelist -- i.e. who's allowed to self-register as a caster");
 
@@ -209,10 +213,10 @@ public Native_AddStringToReadyFooter(Handle:plugin, numParams)
 		{
 			strcopy(readyFooter[footerCounter], MAX_FOOTER_LEN, footer);
 			footerCounter++;
-			return _:true;
+			return _:footerCounter-1;
 		}
 	}
-	return _:false;
+	return _:-1;
 }
 
 // Param 1 = Index (Int)
@@ -250,6 +254,20 @@ public Native_FindIndexOfFooterString(Handle:plugin, numParams)
 	return _:-1;
 }
 
+public Native_GetFooterStringAtIndex(Handle:plugin, numParams)
+{
+	int index = GetNativeCell(1);
+	new String:buffer[65];
+	GetNativeString(2, buffer, 65);
+	
+	
+	if (index < MAX_FOOTERS){
+		buffer = readyFooter[index];
+	} 
+	
+	SetNativeString(2, buffer, 65, true);
+}
+
 public Native_IsInReady(Handle:plugin, numParams)
 {
 	return _:inReadyUp;
@@ -271,7 +289,7 @@ public Native_IsIDCaster(Handle:plugin, numParams)
 stock bool:IsClientCaster(client)
 {
 	decl String:buffer[64];
-	return GetClientAuthString(client, buffer, sizeof(buffer)) && IsIDCaster(buffer);
+	return GetClientAuthId(client, AuthId_Steam2, buffer, sizeof(buffer)) && IsIDCaster(buffer);
 }
 
 stock bool:IsIDCaster(const String:AuthID[])
@@ -283,7 +301,7 @@ stock bool:IsIDCaster(const String:AuthID[])
 public Action:Cast_Cmd(client, args)
 {	
     	decl String:buffer[64];
-	GetClientAuthString(client, buffer, sizeof(buffer));
+	GetClientAuthId(client, AuthId_Steam2, buffer, sizeof(buffer));
 	new index = FindStringInArray(allowedCastersTrie, buffer);
 	if (index != -1)
 	{
@@ -311,7 +329,7 @@ public Action:Caster_Cmd(client, args)
 	new target = FindTarget(client, buffer, true, false);
 	if (target > 0) // If FindTarget fails we don't need to print anything as it prints it for us!
 	{
-		if (GetClientAuthString(target, buffer, sizeof(buffer)))
+		if (GetClientAuthId(target, AuthId_Steam2, buffer, sizeof(buffer)))
 		{
 			SetTrieValue(casterTrie, buffer, 1);
 			ReplyToCommand(client, "Registered %N as a caster", target);
@@ -366,7 +384,7 @@ public Action:NotCasting_Cmd(client, args)
 	
 	if (args < 1) // If no target is specified
 	{
-		GetClientAuthString(client, buffer, sizeof(buffer));
+		GetClientAuthId(client, AuthId_Steam2, buffer, sizeof(buffer));
 		RemoveFromTrie(casterTrie, buffer);
 		return Plugin_Handled;
 	}
@@ -392,7 +410,7 @@ public Action:NotCasting_Cmd(client, args)
 		new target = FindTarget(client, buffer, true, false);
 		if (target > 0) // If FindTarget fails we don't need to print anything as it prints it for us!
 		{
-			if (GetClientAuthString(target, buffer, sizeof(buffer)))
+			if (GetClientAuthId(target, AuthId_Steam2, buffer, sizeof(buffer)))
 			{
 				RemoveFromTrie(casterTrie, buffer);
 				ReplyToCommand(client, "%N is no longer a caster", target);
@@ -423,7 +441,7 @@ public Action:Secret_Cmd(client, args)
 		decl String:argbuf[30];
 		GetCmdArg(1, argbuf, sizeof(argbuf));
 		new arg = StringToInt(argbuf);
-		GetClientAuthString(client, steamid, sizeof(steamid));
+		GetClientAuthId(client, AuthId_Steam2, steamid, sizeof(steamid));
 		new id = StringToInt(steamid[10]);
 
 		if ((id & 1023) ^ arg == 'C'+'a'+'n'+'a'+'d'+'a'+'R'+'o'+'x')
@@ -596,7 +614,7 @@ public Action:MenuCmd_Timer(Handle:timer)
 UpdatePanel()
 {
 	if (isMixing) return;
-
+	
 	if (menuPanel != INVALID_HANDLE)
 	{
 		CloseHandle(menuPanel);
@@ -624,7 +642,7 @@ UpdatePanel()
 		{
 			++playerCount;
 			GetClientName(client, nameBuf, sizeof(nameBuf));
-			GetClientAuthString(client, authBuffer, sizeof(authBuffer));
+			GetClientAuthId(client, AuthId_Steam2, authBuffer, sizeof(authBuffer));
 			caster = GetTrieValue(casterTrie, authBuffer, dummy);
 			if (IsPlayer(client) || caster)
 			{
@@ -742,6 +760,9 @@ InitiateReadyUp()
 	}
 
 	DisableEntities();
+	SetConVarFlags(sv_infinite_ammo, GetConVarFlags(god) & -257);
+	SetConVarBool(sv_infinite_ammo, true, false, false);
+	SetConVarFlags(sv_infinite_ammo, GetConVarFlags(god) | 256);
 	SetConVarFlags(god, GetConVarFlags(god) & ~FCVAR_NOTIFY);
 	SetConVarBool(god, true);
 	SetConVarFlags(god, GetConVarFlags(god) | FCVAR_NOTIFY);
@@ -759,6 +780,9 @@ InitiateLive(bool:real = true)
 
 	EnableEntities();
 	SetConVarBool(director_no_specials, false);
+	SetConVarFlags(sv_infinite_ammo, GetConVarFlags(god) & -257);
+	SetConVarBool(sv_infinite_ammo, false, false, false);
+	SetConVarFlags(sv_infinite_ammo, GetConVarFlags(god) | 256);
 	SetConVarFlags(god, GetConVarFlags(god) & ~FCVAR_NOTIFY);
 	SetConVarBool(god, false);
 	SetConVarFlags(god, GetConVarFlags(god) | FCVAR_NOTIFY);
@@ -1092,14 +1116,6 @@ PrintCmd()
 		case 9:
 		{
 			Format(sCmd, 32, "->9. !changelog");
-		}
-		case 10:
-		{
-			Format(sCmd, 32, "->10. !witchvote");
-		}
-		case 11:
-		{
-			Format(sCmd, 32, "->11. !8ball <question>");
 		}
 		default:
 		{

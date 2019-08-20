@@ -27,6 +27,17 @@
  * Returns the index of a item in the footer array.
  * Does not have to be exact. The footer only needs to contain the input, does not need to match.
  *
+ * @param index    	Index of string
+ * @param buffer	Where to store result
+ * @return          String at specified index
+ */
+native GetFooterStringAtIndex(int index, String:buffer[]);
+
+
+/**
+ * Returns the index of a item in the footer array.
+ * Does not have to be exact. The footer only needs to contain the input, does not need to match.
+ *
  * @param string    String to search for
  * @return          Int index of string
  */
@@ -47,9 +58,9 @@ native bool:EditFooterStringAtIndex(int index, const String:string[]);
  * String will be entirely added or not added, no truncation.
  *
  * @param footer    String to add to the footer
- * @return          True if the string was added, false otherwise
+ * @return          Int Index of string in footer.
  */
-native bool:AddStringToReadyFooter(const String:footer[]);
+native int AddStringToReadyFooter(const String:footer[]);
 
 /**
  * Whether or not the game is currently waiting for players to ready up.

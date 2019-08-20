@@ -11,6 +11,67 @@
  */
 native bool:UpdateBossPercents();
 
+/**
+ * Checks if current map is DKR
+ *
+ * @return          True if map is DKR
+ */
+native bool:IsDarkCarniRemix();
+
+/**
+ * Changes ready up text and chat command to say boss is disabled
+ *
+ * @param setAs  	0 for an enabled tank, 1 for a disabled tank
+ * @noreturn
+ */
+native void SetTankDisabled(int setAs);
+
+/**
+ * Changes ready up text and chat command to say boss is disabled
+ *
+ * @param setAs  	0 for an enabled witch, 1 for a disabled Witch
+ * @noreturn
+ */
+native void SetWitchDisabled(int setAs);
+
+/**
+ * Checks if a specified map has a static tank spawn
+ *
+ * @param mapname   The map name to check for static spawn
+ * @return          True if map contains static spawn
+ */
+native bool:IsStaticWitchMap();
+
+/**
+ * Checks if a specified map has a static tank spawn
+ *
+ * @param mapname   The map name to check for static spawn
+ * @return          True if map contains static spawn
+ */
+native bool:IsStaticTankMap();
+
+/**
+ * Refreshes boss percents on ready up menu
+ *
+ * @return          True if successful
+ */
+native bool:RefreshBossPercentReadyUp();
+
+/**
+ * @return          Returns stored tank percentage
+ */
+native int GetStoredTankPercent();
+
+
+/**
+ * @return          Returns ready up footer index of boss percents
+ */
+native int GetReadyUpFooterIndex();
+
+
+forward void OnUpdateBosses();
+
+
 public SharedPlugin:__pl_bosspercent =
 {
     name = "l4d_boss_percent",
