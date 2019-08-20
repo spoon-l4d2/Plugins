@@ -47,6 +47,7 @@ NOT ALL SOUNDS WILL BE BLOCKED!!! Some sounds are client-side only, for example 
 // Convars
 new Handle:h_FireWorks = INVALID_HANDLE;
 new Handle:h_Coaster = INVALID_HANDLE;
+new Handle:h_CarAlarms = INVALID_HANDLE;
 new Handle:h_Alarms = INVALID_HANDLE;
 new Handle:h_Horde = INVALID_HANDLE;
 new Handle:h_MiscVehicles = INVALID_HANDLE;
@@ -71,6 +72,7 @@ public OnPluginStart()
 {
 	h_FireWorks = CreateConVar("ssb_block_fireworks", "1", "Enable/Disable Firework Sound Blocking");
 	h_Coaster = CreateConVar("ssb_block_coaster", "1", "Enable/Disable Coaster Sound Blocking");
+	h_CarAlarms = CreateConVar("ssb_block_car_alarms", "1", "Enable/Disable Car Alarm Sound Blocking");
 	h_Alarms = CreateConVar("ssb_block_alarms", "1", "Enable/Disable Alarm Sound Blocking");
 	h_Horde = CreateConVar("ssb_block_horde", "1", "Enable/Disable Horde Sound Blocking");
 	h_MiscVehicles = CreateConVar("ssb_block_misc_vehicles", "1", "Enable/Disable Misc Vechile Sound Blocking (I.E Parish Map 4 Tractor, Dead Air Finale Air Plane, Etc.");
@@ -134,9 +136,17 @@ public checkSound(String:sample[256]) {
 		}
 	}
 	
-	// Alarms
+	// Car Alarms
+	if (ConVarBoolValue(h_CarAlarms)) {
+		if ((StrContains(sample, "car_alarm", true) > -1) || (StrContains(sample, "rackmove1", true) > -1))
+		{
+			return checkWhitelist(sample);
+		}
+	}
+	
+	// Other Alarms
 	if (ConVarBoolValue(h_Alarms)) {
-		if ((StrContains(sample, "alarm", true) > -1) || (StrContains(sample, "rackmove1", true) > -1))
+		if ((StrContains(sample, "alarm1", true) > -1) || (StrContains(sample, "rackmove1", true) > -1) | (StrContains(sample, "perimeter_alarm", true) > -1))
 		{
 			return checkWhitelist(sample);
 		}
