@@ -52,9 +52,9 @@ new Handle:h_Alarms = INVALID_HANDLE;
 new Handle:h_Horde = INVALID_HANDLE;
 new Handle:h_MiscVehicles = INVALID_HANDLE;
 new Handle:h_Generators = INVALID_HANDLE;
-new Handle:h_Heartbeat = INVALID_HANDLE;
 new Handle:h_AmbientExplosions = INVALID_HANDLE;
 new Handle:h_Lifts = INVALID_HANDLE;
+new Handle:h_Laughs = INVALID_HANDLE;
 
 new String:a_customSoundPaths[255][255];
 new String:a_whitelistSoundPaths[255][255];
@@ -77,9 +77,9 @@ public OnPluginStart()
 	h_Horde = CreateConVar("ssb_block_horde", "1", "Enable/Disable Horde Sound Blocking");
 	h_MiscVehicles = CreateConVar("ssb_block_misc_vehicles", "1", "Enable/Disable Misc Vechile Sound Blocking (I.E Parish Map 4 Tractor, Dead Air Finale Air Plane, Etc.");
 	h_Generators = CreateConVar("ssb_block_generators", "1", "Enable/Disable Generator Sound Blocking");
-	h_Heartbeat = CreateConVar("ssb_block_heartbeat", "1", "Enable/Disable Heartbeat Sound Blocking");
 	h_AmbientExplosions = CreateConVar("ssb_block_ambient_explosions", "1", "Enable/Disable Ambient Explosion Sound Blocking");
 	h_Lifts = CreateConVar("ssb_block_lifts", "1", "Enable/Disable lift Sound Blocking");
+	h_Laughs = CreateConVar("ssb_block_laughs", "1", "Enable/Disable laugh Sound Blocking");
 	
 	RegServerCmd("ssb_custom_path", CustomPath_Cmd); // Simply put this command in one of your .cfg files along with the custom sound path. Ex: ssb_custom_path "player/survivor/swing/Swish_WeaponSwing_Swipe6"
 	RegServerCmd("ssb_whitelist_path", WhitelistPath_Cmd); // Simply put this command in one of your .cfg files along with the custom sound path. Ex: ssb_whitelist_path "player/survivor/swing/Swish_WeaponSwing_Swipe6"
@@ -128,6 +128,14 @@ public checkSound(String:sample[256]) {
 		}
 	}
 	
+	// Laughs
+	if (ConVarBoolValue(h_Laughs)) {
+		if (((StrContains(sample, "laugh", true) > -1) && !(StrContains(sample, "not_a_", true) > -1)))
+		{
+			return checkWhitelist(sample);
+		}
+	}
+	
 	// Coaster
 	if (ConVarBoolValue(h_Coaster)) {
 		if ((StrContains(sample, "coaster", true) > -1) || (StrContains(sample, "loud/climb_", true) > -1) || (StrContains(sample, "downhill", true) > -1))
@@ -138,7 +146,7 @@ public checkSound(String:sample[256]) {
 	
 	// Car Alarms
 	if (ConVarBoolValue(h_CarAlarms)) {
-		if ((StrContains(sample, "car_alarm", true) > -1) || (StrContains(sample, "rackmove1", true) > -1))
+		if ((StrContains(sample, "car_alarm", true) > -1))
 		{
 			return checkWhitelist(sample);
 		}
@@ -146,7 +154,7 @@ public checkSound(String:sample[256]) {
 	
 	// Other Alarms
 	if (ConVarBoolValue(h_Alarms)) {
-		if ((StrContains(sample, "alarm1", true) > -1) || (StrContains(sample, "rackmove1", true) > -1) | (StrContains(sample, "perimeter_alarm", true) > -1))
+		if ((StrContains(sample, "alarm1", true) > -1) || (StrContains(sample, "rackmove1", true) > -1) || (StrContains(sample, "perimeter_alarm", true) > -1) || (StrContains(sample, "churchbell_begin_loop", true) > -1))
 		{
 			return checkWhitelist(sample);
 		}
@@ -162,7 +170,7 @@ public checkSound(String:sample[256]) {
 	
 	// Misc Vehicles -- There's a lot :D
 	if (ConVarBoolValue(h_MiscVehicles)) {
-		if ((StrContains(sample, "chainlink_fence_open", true) > -1) || (StrContains(sample, "riverbarge_", true) > -1) || (StrContains(sample, "van_inside", true) > -1) || (StrContains(sample, "tractor", true) > -1) || (StrContains(sample, "airport_rough_crash", true) > -1) || (StrContains(sample, "fuel_truck", true) > -1) || (StrContains(sample, "c130", true) > -1) || (StrContains(sample, "jet", true) > -1) || (StrContains(sample, "c1_intro_chopper_leave", true) > -1))
+		if ((StrContains(sample, "chainlink_fence_open", true) > -1) || (StrContains(sample, "riverbarge_", true) > -1) || ((StrContains(sample, "van_inside", true) > -1) && !(StrContains(sample, "_start", true))) || (StrContains(sample, "tractor", true) > -1) || (StrContains(sample, "airport_rough_crash", true) > -1) || (StrContains(sample, "fuel_truck", true) > -1) || (StrContains(sample, "c130", true) > -1) || (StrContains(sample, "jet", true) > -1) || (StrContains(sample, "c1_intro_chopper_leave", true) > -1))
 		{
 			return checkWhitelist(sample);
 		}
@@ -170,15 +178,7 @@ public checkSound(String:sample[256]) {
 	
 	// Generator
 	if (ConVarBoolValue(h_Generators)) {
-		if (StrContains(sample, "generator", true) > -1)
-		{
-			return checkWhitelist(sample);
-		}
-	}
-	
-	// Heartbeat
-	if (ConVarBoolValue(h_Heartbeat)) {
-		if (StrContains(sample, "heartbeatloop", true) > -1)
+		if ((StrContains(sample, "generator", true) > -1) && (StrContains(sample, "_stop", true) < 0) && (StrContains(sample, "_sputter", true) < 0) && (StrContains(sample, "nostart_loop", true) < 0))
 		{
 			return checkWhitelist(sample);
 		}
@@ -186,7 +186,7 @@ public checkSound(String:sample[256]) {
 	
 	// Ambient Explosions
 	if (ConVarBoolValue(h_AmbientExplosions)) {
-		if ((StrContains(sample, "explode_", true) > -1) || (StrContains(sample, "timeddebris_", true) > -1) || (StrContains(sample, "timeddebris_", true) > -1) || (StrContains(sample, "bombing_run", true) > -1) || (StrContains(sample, "bridge_destruct_swt_01", true) > -1))
+		if (((StrContains(sample, "explode_", true) > -1) && !(StrContains(sample, "player", true) > -1)) || (StrContains(sample, "timeddebris_", true) > -1) || (StrContains(sample, "timeddebris_", true) > -1) || (StrContains(sample, "bombing_run", true) > -1) || (StrContains(sample, "bridge_destruct_swt_01", true) > -1))
 		{
 			return checkWhitelist(sample);
 		}
@@ -194,7 +194,7 @@ public checkSound(String:sample[256]) {
 	
 	// Lifts / Event
 	if (ConVarBoolValue(h_Lifts)) {
-		if ((StrContains(sample, "c6_bridgelower_seg01", true) > -1) || (StrContains(sample, "garage_lift_loop", true) > -1) || (StrContains(sample, "floodgate", true) > -1))
+		if ((StrContains(sample, "c6_bridgelower_seg01", true) > -1) || (StrContains(sample, "garage_lift_loop", true) > -1) || (StrContains(sample, "floodgate", true) > -1) || (StrContains(sample, "c5_bridge_lower_seg01", true) > -1))
 		{
 			return checkWhitelist(sample);
 		}

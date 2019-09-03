@@ -35,16 +35,33 @@ public OnMapStart()
 	}
 }
 
+public Action:PlayHunterSpawnSound(Handle:timer, client)
+{
+	if (!IsClientAndInGame(client)) 
+		return Plugin_Handled;
+		
+	if (GetClientTeam(client) != 3) 
+		return Plugin_Handled;
+		
+	if (!IsHunter(client)) 
+		return Plugin_Handled;
+		
+	if (!IsPlayerAlive(client)) 
+		return Plugin_Handled;
+
+	// Pick random hunter sound and play it
+	new randomSound = GetRandomInt(1, 5);
+	EmitSoundToAll(g_aHunterSounds[randomSound], client, SNDCHAN_AUTO, SNDLEVEL_NORMAL);
+	
+	return Plugin_Continue;
+}
+
+
 public Action:PlayerSpawn_Event(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	// Check if client is hunter
 	
-	if (!IsHunter(client)) return Plugin_Continue;
-
-	// Pick random hunter sound and play it
-	new randomSound = GetRandomInt(0, 5);
-	EmitSoundToAll(g_aHunterSounds[randomSound], client, SNDCHAN_AUTO, SNDLEVEL_NORMAL);
+	CreateTimer(0.1, PlayHunterSpawnSound, client);
 
 	return Plugin_Continue;
 }
@@ -55,4 +72,9 @@ stock bool:IsHunter(client)
 		return false;
 
 	return true;
+}
+
+bool:IsClientAndInGame(index)
+{
+    return (index > 0 && index <= MaxClients && IsClientInGame(index));
 }

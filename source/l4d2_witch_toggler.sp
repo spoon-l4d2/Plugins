@@ -18,6 +18,7 @@ new bool:g_bWitchEnabled;
 new bool:g_bOnCooldown;
 new Float:g_fWitchFlow;
 new Handle:g_hWitchVote = INVALID_HANDLE;
+new Handle:g_hDisabledMap;
 new Float:EntityOrigin[3];
 new iEnt;
 
@@ -33,6 +34,7 @@ public OnPluginStart()
 {
 	// Variable Setting
 	g_hVsBossBuffer = FindConVar("versus_boss_buffer");
+	g_hDisabledMap = CreateTrie();
 	
 	// ConVars
 	cvar_Announce = CreateConVar("swt_command_announce", "1", "Enables/Disables the 'how to use command' message that is displayed to a user upon joining the server.");
@@ -42,11 +44,37 @@ public OnPluginStart()
 	RegConsoleCmd("sm_votewitch", VoteWitchCommand);
 	RegConsoleCmd("sm_witchvote", VoteWitchCommand);
 	
+	// Server Commands
+	RegServerCmd("no_witch_vote_map", NoWitchVoteMap_Command);
+	
 	// Admin Commands
 	RegAdminCmd("sm_forcewitch", ForceWitchCommand, ADMFLAG_BAN);
 	
 	// Events
 	HookEvent("round_start", RoundStart_Event, EventHookMode_PostNoCopy);
+}
+
+// ========================================================
+// =================== No Witch Vote ======================
+// ========================================================
+// Server Command - When it is executed it will add a static tank map name to a list.
+public Action:NoWitchVoteMap_Command(args)
+{
+	decl String:mapname[64];
+	GetCmdArg(1, mapname, sizeof(mapname));
+	SetTrieValue(g_hDisabledMap, mapname, true);
+}
+
+public bool:WitchVoteAllowed(){
+	new String:g_sCurrentMap[64];
+	GetCurrentMap(g_sCurrentMap, sizeof(g_sCurrentMap));
+	new tempValue;
+	if (!GetTrieValue(g_hDisabledMap, g_sCurrentMap, tempValue)) {
+		return true;				
+	}
+	else {
+		return false;
+	}
 }
 
 // ========================================================
@@ -144,6 +172,12 @@ public Action:VoteWitchCommand(client, args){
 
 	// Just In Case :)
 	if (!client) return Plugin_Handled;
+	
+	// Check if round is in second half
+	if (!WitchVoteAllowed()) {
+		CPrintToChat(client, "{green}<{blue}WitchVoter{green}>{default} The Witch Vote is not available on this map.");
+		return Plugin_Handled;
+	}
 	
 	// Check if round is in second half
 	if (InSecondHalfOfRound()) {
@@ -255,6 +289,7 @@ public VoteResultHandler(Handle:vote, num_votes, num_clients, const client_info[
 				// Check if witch has been enabled or disabled
 				if (g_bWitchEnabled)
 				{
+				
 					// Set Vote Title
 					DisplayBuiltinVotePass(vote, "Disabling the Witch...");
 					
@@ -267,9 +302,10 @@ public VoteResultHandler(Handle:vote, num_votes, num_clients, const client_info[
 					return;			
 					
 				} else {
+
 					// Set Vote Title
 					DisplayBuiltinVotePass(vote, "Enabling the Witch...");			
-					
+
 					// Enable the Witch
 					EnableWitch();
 					
@@ -305,21 +341,43 @@ public Action:DisableRoundTwoStaticWitch(Handle:timer) {
 	}
 }
 
-public void DisableWitch(){
+
+public void DisableWitch()
+{
+	CreateTimer(0.1, DisableWitchT);
+	return;
+}
+
+public void EnableWitch()
+{
+	CreateTimer(0.1, EnableWitchT);
+	return;
+}
+
+public Action:DisableWitchT(Handle:timer){	
+	// If it's a static map move the witch out of bounds
+	
 	// Store the Flow before disabling - doing it here incase it's changed via !voteboss
 	if (!IsDarkCarniRemix())
 	{
 		g_fWitchFlow = GetWitchFlow(0);
 	}
 	
-	// If it's a static map move the witch out of bounds
 	if (IsStaticWitchMap()) {
 		int index;
 		index = FindWitchEntity();
+		
 		if (index > -1)
-			GetEmOuttaHea(index);
+		{
+			GetEmOuttaHea(index);		
+		}
+		else
+		{
+			CPrintToChatAll("{green}<{blue}WitchVoter{green}>{default} Error: Witch Voting is not available on this map.");
+			return Plugin_Handled;
+		}
 	}
-	
+
 	// Set Flow to 0
 	L4D2Direct_SetVSWitchFlowPercent(0, 0.0);
 	L4D2Direct_SetVSWitchFlowPercent(1, 0.0);
@@ -334,9 +392,11 @@ public void DisableWitch(){
 	// Update Boss Percents
 	SetWitchDisabled(1);
 	UpdateBossPercents();
+	
+	return Plugin_Handled;
 }
 
-public void EnableWitch(){
+public Action:EnableWitchT(Handle:timer){
 	// Set Witch Flow - If non-static
 	if (!IsStaticWitchMap()){
 	
@@ -344,8 +404,18 @@ public void EnableWitch(){
 		L4D2Direct_SetVSWitchFlowPercent(1, g_fWitchFlow);	
 		
 	} else {
-		BringEmBackHea(FindWitchEntity(), EntityOrigin);
-	}	
+		int index;
+		index = FindWitchEntity();
+		if (index > -1)
+		{
+			BringEmBackHea(FindWitchEntity(), EntityOrigin);	
+		}
+		else
+		{
+			CPrintToChatAll("{green}<{blue}WitchVoter{green}>{default} Error: Witch Voting is not available on this map.");
+			return Plugin_Handled;
+		}
+	}
 	
 	// Enable Witch Spawning
 	L4D2Direct_SetVSWitchToSpawnThisRound(0, true);
@@ -357,6 +427,8 @@ public void EnableWitch(){
 	// Update Boss Percents
 	SetWitchDisabled(0);
 	UpdateBossPercents();
+	
+	return Plugin_Handled;
 }
 
 // ========================================================
@@ -364,6 +436,13 @@ public void EnableWitch(){
 // ========================================================
 
 public Action:ForceWitchCommand(client, args){
+
+	// Check if round is in second half
+	if (!WitchVoteAllowed()) {
+		CPrintToChat(client, "{green}<{blue}WitchVoter{green}>{default} The Witch Vote is not available on this map.");
+		return Plugin_Handled;
+	}
+
 	// Check if round is live
 	if (!IsInReady())  {
 		CPrintToChat(client, "{green}<{blue}WitchVoter{green}>{default} The Witch can only be toggled during ready-up.");
@@ -421,7 +500,7 @@ public int FindWitchEntity() {
 	while (iEnt = FindEntityByClassname(-1, "witch"))
     {
 		if (!IsValidEntity(iEnt)) continue;
-		
+
 		return iEnt;
     }
 	return -1;

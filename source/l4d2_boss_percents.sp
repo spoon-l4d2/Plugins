@@ -7,9 +7,6 @@ Ready Up footer, rather then endlessly stacking them ontop of one another.
 It was also created so that my Witch Toggler plugin can properly display if the witch is disabled 
 or not on both the ready up menu aswell as when using the !boss commands.
 
-If you are replacing your l4d_boss_percent plugin that was taken from Zonemod you will need to download my custom
-l4d2_boss_vote plugin. As ZoneMod has boss voting and boss percents merged together as one plugin.
-
 I tried my best to comment everything so it can be very easy to understand what's going on. Just in case you want to 
 do some personalization for your server or config. It will also come in handy if somebody finds a bug and I need to figure
 out what's going on :D Kinda makes my other plugins look bad huh :/
@@ -780,10 +777,8 @@ public Action:UpdateReadyUpFooter(Handle:timer)
 
 public Action:BossCmd(client, args)
 {
-	// Say current map completion
-	FakeClientCommand(client, "say /current");
-	
 	// Show our boss percents
+	FakeClientCommand(client, "say /current");
 	CreateTimer(0.1, PrintBossPercents, client);
 }
 
@@ -1102,7 +1097,7 @@ public SetWitchPercent(int percent)
 	}
 	else
 	{
-		p_newPercent = (p_newPercent/100); // Some weird bug fix
+		p_newPercent = (p_newPercent/100);
 		L4D2Direct_SetVSWitchFlowPercent(0, p_newPercent);
 		L4D2Direct_SetVSWitchFlowPercent(1, p_newPercent);
 		L4D2Direct_SetVSWitchToSpawnThisRound(0, true);
@@ -1131,7 +1126,7 @@ public SetTankPercent(int percent)
 	}
 	else
 	{
-		p_newPercent = (p_newPercent/100); // Some weird bug fix
+		p_newPercent = (p_newPercent/100);
 		L4D2Direct_SetVSTankFlowPercent(0, p_newPercent);
 		L4D2Direct_SetVSTankFlowPercent(1, p_newPercent);
 		L4D2Direct_SetVSTankToSpawnThisRound(0, true);
