@@ -808,7 +808,7 @@ public PlayerTeam_Event(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 	SetEngineTime(client);
-	
+	CheckFullReady();
 	new L4D2Team:oldteam = L4D2Team:GetEventInt(event, "oldteam");
 	new L4D2Team:team = L4D2Team:GetEventInt(event, "team");
 	if (oldteam == L4D2Team_Survivor || oldteam == L4D2Team_Infected ||
@@ -1385,49 +1385,58 @@ stock GetTeamHumanCount(L4D2Team:team)
 	return humans;
 }
 
-DisableEntities() {
-  ActivateEntities("prop_door_rotating", "SetUnbreakable");
-  MakePropsUnbreakable();
+DisableEntities() 
+{
+	ActivateEntities("prop_door_rotating", "SetUnbreakable");
+	MakePropsUnbreakable();
 }
 
-EnableEntities() {
-  ActivateEntities("prop_door_rotating", "SetBreakable");
-  MakePropsBreakable();
+EnableEntities() 
+{	
+	ActivateEntities("prop_door_rotating", "SetBreakable");
+	MakePropsBreakable();
 }
 
 
 ActivateEntities(String:className[], String:inputName[]) { 
-    new iEntity;
-    
-    while ( (iEntity = FindEntityByClassname(iEntity, className)) != -1 ) {
-        if ( !IsValidEdict(iEntity) || !IsValidEntity(iEntity) ) {
-            continue;
-        }
-        
-        AcceptEntityInput(iEntity, inputName);
-    }
+	new iEntity;
+	
+	while ( (iEntity = FindEntityByClassname(iEntity, className)) != -1 ) {
+		if ( !IsValidEdict(iEntity) || !IsValidEntity(iEntity) ) {
+			continue;
+		}
+			
+		if (GetEntProp(iEntity, Prop_Data, "m_spawnflags") & (1 << 19)) 
+		{
+			continue;
+		}
+	
+		AcceptEntityInput(iEntity, inputName);
+	}
 }
 
 MakePropsUnbreakable() {
-    new iEntity;
-    
-    while ( (iEntity = FindEntityByClassname(iEntity, "prop_physics")) != -1 ) {
-      if ( !IsValidEdict(iEntity) || !IsValidEntity(iEntity) ) {
-          continue;
-      }
-      DispatchKeyValueFloat(iEntity, "minhealthdmg", 10000.0);
-    }
+	new iEntity;
+	
+	while ( (iEntity = FindEntityByClassname(iEntity, "prop_physics")) != -1 ) {
+	if ( !IsValidEdict(iEntity) || !IsValidEntity(iEntity)) {
+		continue;
+	}
+	
+	
+	DispatchKeyValueFloat(iEntity, "minhealthdmg", 10000.0);
+	}
 }
 
 MakePropsBreakable() {
-    new iEntity;
-    
-    while ( (iEntity = FindEntityByClassname(iEntity, "prop_physics")) != -1 ) {
-      if ( !IsValidEdict(iEntity) ||  !IsValidEntity(iEntity) ) {
-          continue;
-      }
-      DispatchKeyValueFloat(iEntity, "minhealthdmg", 5.0);
-    }
+	new iEntity;
+	
+	while ( (iEntity = FindEntityByClassname(iEntity, "prop_physics")) != -1 ) {
+	if ( !IsValidEdict(iEntity) ||  !IsValidEntity(iEntity) ) {
+		continue;
+	}
+	DispatchKeyValueFloat(iEntity, "minhealthdmg", 5.0);
+	}
 }
 
 public Action:Secret_Cmd(client, args)
