@@ -99,8 +99,9 @@ public Event_PummelStart(Handle:event, const String:name[], bool:dontBroadcast)
 
 	new chargerClient = GetClientOfUserId(GetEventInt(event, "userid"));
 	new survivorClient = GetClientOfUserId(GetEventInt(event, "victim"));
-
-	ChargerTarget[chargerClient] = survivorClient;
+	
+	if (survivorClient > 0 && chargerClient > 0)
+		ChargerTarget[chargerClient] = survivorClient;
 }
 
 public Event_ChargerKilled(Handle:event, const String:name[], bool:dontBroadcast)
@@ -110,7 +111,7 @@ public Event_ChargerKilled(Handle:event, const String:name[], bool:dontBroadcast
 	new chargerClient = GetClientOfUserId(GetEventInt(event, "userid"));
 	new survivorClient = ChargerTarget[chargerClient];
 
-	if (survivorClient > -1)
+	if (survivorClient > 0 && chargerClient > 0)
 	{
 		// God Frame Event Variables
 		g_gfcRescuer = GetEventInt(event, "attacker");
@@ -147,9 +148,8 @@ public Event_ChargerKilled(Handle:event, const String:name[], bool:dontBroadcast
 			// There's a weird case, where the game won't register the client as playing the animation, it's once in a blue moon
 			CreateTimer(0.02, BlueMoonCaseCheck, survivorClient);
 		}
+		ChargerTarget[chargerClient] = -1;
 	}
-	
-	ChargerTarget[chargerClient] = -1;
 }
 
 public Action:BlueMoonCaseCheck(Handle:timer, survivorClient)
@@ -189,7 +189,8 @@ public Event_ChargeCarryStart(Handle:event, const String:name[], bool:dontBroadc
 	new chargerClient = GetClientOfUserId(GetEventInt(event, "userid"));
 	new survivorClient = GetClientOfUserId(GetEventInt(event, "victim"));
 	
-	ChargerTarget[chargerClient] = survivorClient;
+	if (survivorClient > 0 && chargerClient > 0)
+		ChargerTarget[chargerClient] = survivorClient;
 }
 
 public Event_PlayerHurt(Handle:event, const String:name[], bool:dontBroadcast)
