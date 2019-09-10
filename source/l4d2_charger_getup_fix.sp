@@ -23,160 +23,209 @@
 #define SEQ_LONG_LOUIS 764
 #define SEQ_LONG_FRANCIS 765
 
+// Cvars
+new Handle:cvar_longChargeGetUpFixEnabled = INVALID_HANDLE;
+new Handle:cvar_keepWallSlamLongGetUp = INVALID_HANDLE;
+new Handle:cvar_keepLongChargeLongGetUp = INVALID_HANDLE;
+
+// Fake godframe event variables
+new g_gfcSurvivor;
+new g_gfcCharger;
+new g_gfcRescuer;
+
+// Variables
+new ChargerTarget[MAXPLAYERS+1];
 
 public Plugin:myinfo = 
 {
-	name = "[L4D2] Charger Get-Up Fix",
+	name = "[L4D2] Long Charger Get-Up Fix",
 	author = "Spoon",
-	description = "Prevents long charger get ups.",
-	version = "1",
+	description = "Allows control over long charger get ups.",
+	version = "2",
 	url = "https://github.com/spoon-l4d2"
 };
-
-// Cvars
-new Handle:cvar_longGetUpFixEnabled;
-new Handle:cvar_playNormalAnimation;
-new Handle:cvar_godFrameNormalAnimation;
-new Handle:cvar_instantChargeAnimBuffer;
-
-// Handle
-new ChargerTargets[MAXPLAYERS+1];
-
-// Variables
-new gfc_fakeUserID;
-new gfc_fakeVictim;
-new gfc_fakeRescuer;
 
 public OnPluginStart()
 {
 	// Event Hooks
 	HookEvent("charger_killed", Event_ChargerKilled, EventHookMode_Post);
-	HookEvent("charger_carry_start", Event_ChargeStart, EventHookMode_Post);
+	HookEvent("charger_carry_start", Event_ChargeCarryStart, EventHookMode_Post);
 	HookEvent("player_hurt", Event_PlayerHurt, EventHookMode_Post);
+	HookEvent("round_start", Event_RoundStart, EventHookMode_Post);
+	HookEvent("charger_pummel_start", Event_PummelStart, EventHookMode_Post);
+	HookEvent("charger_pummel_end", Event_PummelStart, EventHookMode_Post);
 	
-	// ConVars
-	cvar_longGetUpFixEnabled = CreateConVar("long_charger_getup_fix", "1", "Stop long charger get ups.");
-	cvar_playNormalAnimation = CreateConVar("long_charger_getup_replace_anim", "1", "Replace long charger get-ups with normal ones.");
-	cvar_godFrameNormalAnimation = CreateConVar("long_charger_getup_replace_godframes", "1", "Apply fake god frames to replaced animation.");
-	cvar_instantChargeAnimBuffer = CreateConVar("long_charger_instant_charge_getup_buffer", "0.0");
+	// Cvars
+	cvar_longChargeGetUpFixEnabled = CreateConVar("charger_long_getup_fix", "1", "Enable the long Charger get-up fix?");
+	cvar_keepWallSlamLongGetUp = CreateConVar("charger_keep_wall_charge_animation", "1", "Enable the long wall slam animation (with god frames)");
+	cvar_keepLongChargeLongGetUp = CreateConVar("charger_keep_far_charge_animation", "0", "Enable the long 'far' slam animation (with god frames)");
 }
 
-public RoundStart_Event(Handle:event, const String:name[], bool:dontBroadcast)
+// ==========================================
+// ================= Events =================
+// ==========================================
+
+public PlayClientGetUpAnimation(client)
+{
+	L4D2Direct_DoAnimationEvent(client, 78);
+}
+
+public CancelGetUpAnimation(client)
+{
+	SetEntPropFloat(client, Prop_Send, "m_flCycle", 1000.0);
+}
+
+public FireGodFrameEvent()
+{
+	Event fakeGodFrameEvent = CreateEvent("charger_pummel_end", true);
+	fakeGodFrameEvent.SetInt("userid", g_gfcCharger);
+	fakeGodFrameEvent.SetInt("victim", g_gfcSurvivor);
+	fakeGodFrameEvent.SetInt("rescuer", g_gfcRescuer);
+	fakeGodFrameEvent.Fire(true);
+}
+
+public Event_RoundStart(Handle:event, const String:name[], bool:dontBroadcast)
 {	
-	// Reset our variables right quick
-	
 	for (new i = 0; i < MAXPLAYERS+1; i++)
 	{
-		if (ChargerTargets[i] != -1)
-			ChargerTargets[i] = -1;
+		if (ChargerTarget[i] != -1)
+			ChargerTarget[i] = -1;
 	}
 }
 
-public PlayNormalGetUpAnimation(client)
+public Event_PummelStart(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	
-	if (GetConVarBool(cvar_playNormalAnimation))
-		L4D2Direct_DoAnimationEvent(client, 78);
-	
-	if (GetConVarBool(cvar_godFrameNormalAnimation))
-	{
-		Event fakeGodFrameEvent = CreateEvent("charger_pummel_end", true);
-		gfc_fakeVictim = GetClientUserId(client);
-		fakeGodFrameEvent.SetInt("userid", gfc_fakeUserID);
-		fakeGodFrameEvent.SetInt("victim", gfc_fakeVictim);
-		fakeGodFrameEvent.SetInt("rescuer", gfc_fakeRescuer);
-		fakeGodFrameEvent.Fire(true);
-	}
-}
-
-public Event_PlayerHurt(Handle:event, const String:name[], bool:dontBroadcast)
-{
-	if (!GetConVarBool(cvar_longGetUpFixEnabled))
-		return;
-
-	new survivorClient = GetClientOfUserId(GetEventInt(event, "userid"));
-	new chargerClient = GetClientOfUserId(GetEventInt(event, "attacker"));
-	
-	if (IsCharger(chargerClient) && IsSurvivor(survivorClient))
-	{
-		gfc_fakeUserID = GetClientUserId(chargerClient);
-		CreateTimer(GetConVarFloat(cvar_instantChargeAnimBuffer), CancelAnim, survivorClient);
-	}
-}
-
-public Action:CancelAnim(Handle:timer, client)
-{
-	if (IsPlayingGetUpAnimation(client, 1))
-	{
-		SetEntPropFloat(client, Prop_Send, "m_flCycle", 1000.0);
-		PlayNormalGetUpAnimation(client);
-	}
-}
-
-public Event_ChargeStart(Handle:event, const String:name[], bool:dontBroadcast)
-{
-	if (!GetConVarBool(cvar_longGetUpFixEnabled))
-		return;
+	if (!GetConVarBool(cvar_longChargeGetUpFixEnabled)) return;
 
 	new chargerClient = GetClientOfUserId(GetEventInt(event, "userid"));
-	new chargerTarget = GetClientOfUserId(GetEventInt(event, "victim"));
-	
-	ChargerTargets[chargerClient] = chargerTarget;
+	new survivorClient = GetClientOfUserId(GetEventInt(event, "victim"));
+
+	ChargerTarget[chargerClient] = survivorClient;
 }
 
 public Event_ChargerKilled(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	if (!GetConVarBool(cvar_longGetUpFixEnabled))
-		return;
+	if (!GetConVarBool(cvar_longChargeGetUpFixEnabled)) return;
 
 	new chargerClient = GetClientOfUserId(GetEventInt(event, "userid"));
-	new chargerTarget = ChargerTargets[chargerClient];
+	new survivorClient = ChargerTarget[chargerClient];
 
-
-	if (chargerTarget > -1)
+	if (survivorClient > -1)
 	{
-		if (IsPlayingGetUpAnimation(chargerTarget, 2))
+		// God Frame Event Variables
+		g_gfcRescuer = GetEventInt(event, "attacker");
+		g_gfcSurvivor = GetClientUserId(survivorClient);
+	
+		if (IsPlayingGetUpAnimation(survivorClient, 2))
+		{ // Long Charge Get Up
+			if (GetConVarBool(cvar_keepLongChargeLongGetUp))
+			{
+				FireGodFrameEvent();
+			}
+			else
+			{
+				CancelGetUpAnimation(survivorClient)
+				PlayClientGetUpAnimation(survivorClient);
+				FireGodFrameEvent();
+			}
+		} 
+		else if (IsPlayingGetUpAnimation(survivorClient, 1))
+		{ // Wall Slam Get Up
+			if (GetConVarBool(cvar_keepWallSlamLongGetUp))
+			{
+				FireGodFrameEvent();
+			}
+			else
+			{
+				CancelGetUpAnimation(survivorClient)
+				PlayClientGetUpAnimation(survivorClient);
+				FireGodFrameEvent();
+			}
+		}
+		else
 		{
-			gfc_fakeRescuer = GetEventInt(event, "attacker");
-			SetEntPropFloat(chargerTarget, Prop_Send, "m_flCycle", 1000.0);
-			PlayNormalGetUpAnimation(chargerTarget);
+			// There's a weird case, where the game won't register the client as playing the animation, it's once in a blue moon
+			CreateTimer(0.02, BlueMoonCaseCheck, survivorClient);
 		}
 	}
 	
-	ChargerTargets[chargerClient] = -1;
+	ChargerTarget[chargerClient] = -1;
 }
 
-
-stock bool:IsCharger(client)  
+public Action:BlueMoonCaseCheck(Handle:timer, survivorClient)
 {
-	if (!IsInfected(client))
-		return false;
-
-	if (GetEntProp(client, Prop_Send, "m_zombieClass") != 6)
-		return false;
-
-	return true;
+	if (IsPlayingGetUpAnimation(survivorClient, 2))
+	{ // Long Charge Get Up
+		if (GetConVarBool(cvar_keepLongChargeLongGetUp))
+		{
+			FireGodFrameEvent();
+		}
+		else
+		{
+			CancelGetUpAnimation(survivorClient)
+			PlayClientGetUpAnimation(survivorClient);
+			FireGodFrameEvent();
+		}
+	} 
+	else if (IsPlayingGetUpAnimation(survivorClient, 1))
+	{ // Wall Slam Get Up
+		if (GetConVarBool(cvar_keepWallSlamLongGetUp))
+		{
+			FireGodFrameEvent();
+		}
+		else
+		{
+			CancelGetUpAnimation(survivorClient)
+			PlayClientGetUpAnimation(survivorClient);
+			FireGodFrameEvent();
+		}
+	}
 }
 
-bool:IsPlayingGetUpAnimation(survivor, type)  
+public Event_ChargeCarryStart(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	new sequence = GetEntProp(survivor, Prop_Send, "m_nSequence");
-	if (sequence == GetSequenceInt(survivor, type)) return true;
-	return false;
+	if (!GetConVarBool(cvar_longChargeGetUpFixEnabled)) return;
+
+	new chargerClient = GetClientOfUserId(GetEventInt(event, "userid"));
+	new survivorClient = GetClientOfUserId(GetEventInt(event, "victim"));
+	
+	ChargerTarget[chargerClient] = survivorClient;
 }
 
-stock bool:IsSurvivor(client)
-{
-	return client > 0 && client <= MaxClients && IsClientInGame(client) && GetClientTeam(client) == 2;
+public Event_PlayerHurt(Handle:event, const String:name[], bool:dontBroadcast)
+{ // Wall Slam Charge Checks
+
+	if (!GetConVarBool(cvar_longChargeGetUpFixEnabled)) return;
+
+	new survivorClient;
+	new chargerClient;
+	new survivorUserId =  GetEventInt(event, "userid");
+	new chargerUserId = GetEventInt(event, "attacker");
+	
+	if (survivorUserId)
+		survivorClient = GetClientOfUserId(survivorUserId);
+	if (chargerUserId)
+		chargerClient = GetClientOfUserId(chargerUserId);
+		
+	if (!IsCharger(chargerClient) && !IsSurvivor(survivorClient)) return;
+
+	// God Frame Variables
+	if (survivorClient > 0)
+		g_gfcSurvivor = GetClientUserId(survivorClient);
+	if (chargerClient > 0)
+		g_gfcCharger = GetClientUserId(chargerClient);
+	
+	ChargerTarget[chargerClient] = survivorClient; 
 }
 
-stock bool:IsInfected(client)
-{
-	return client > 0 && client <= MaxClients && IsClientInGame(client) && GetClientTeam(client) == 3;
-}
+// ==========================================
+// ================= Checks =================
+// ==========================================
 
 stock GetSequenceInt(client, type)
 {
+	if (client < 1) return -1;
+
 	decl String:survivorModel[PLATFORM_MAX_PATH];
 	GetClientModel(client, survivorModel, sizeof(survivorModel));
 	
@@ -246,4 +295,35 @@ stock GetSequenceInt(client, type)
 	}
 	
 	return -1;
+}
+
+stock bool:IsCharger(client)  
+{
+	if (!IsInfected(client))
+		return false;
+
+	if (GetEntProp(client, Prop_Send, "m_zombieClass") != 6)
+		return false;
+
+	return true;
+}
+
+bool:IsPlayingGetUpAnimation(survivor, type)  
+{
+	if (survivor < 1)
+		return false;
+
+	new sequence = GetEntProp(survivor, Prop_Send, "m_nSequence");
+	if (sequence == GetSequenceInt(survivor, type)) return true;
+	return false;
+}
+
+stock bool:IsSurvivor(client)
+{
+	return client > 0 && client <= MaxClients && IsClientInGame(client) && GetClientTeam(client) == 2;
+}
+
+stock bool:IsInfected(client)
+{
+	return client > 0 && client <= MaxClients && IsClientInGame(client) && GetClientTeam(client) == 3;
 }
