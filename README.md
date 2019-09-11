@@ -27,7 +27,9 @@ When you type `!voteboss x y` it will no longer force those boss percents, it wi
 ---
 
 ### l4d2_charger_getup_fix.smx
+
 Allows control over long charger get ups. It will add god frames and allows for config developers to enable/disable them, and replace all long get-ups with normal animations. View source for more info and cvars.
+
 ---
 
 ### nogetupskip.smx

@@ -24,16 +24,6 @@
 #define SEQ_LONG_LOUIS 764
 #define SEQ_LONG_FRANCIS 765
 
-// Charges that land against a wall and are cleared instantly
-#define SEQ_NORMAL_NICK 667
-#define SEQ_NORMAL_COACH 656
-#define SEQ_NORMAL_ELLIS 671
-#define SEQ_NORMAL_ROCHELLE 674
-#define SEQ_NORMAL_ZOEY 819
-#define SEQ_NORMAL_BILL 759
-#define SEQ_NORMAL_LOUIS 759
-#define SEQ_NORMAL_FRANCIS 762
-
 #define ZC_CHARGER 6
 #define TEAM_SURVIVOR 2
 #define TEAM_INFECTED 3
@@ -300,7 +290,6 @@ stock GetSequenceInt(client, type)
 		{
 			case 1: return SEQ_INSTANT_COACH;
 			case 2: return SEQ_LONG_COACH;
-			case 3: return SEQ_NORMAL_COACH;
 		}
 	}
 	else if(StrEqual(survivorModel, "models/survivors/survivor_gambler.mdl", false))
