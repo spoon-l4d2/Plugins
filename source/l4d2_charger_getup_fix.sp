@@ -2,6 +2,7 @@
 #include <left4downtown>
 #include <l4d2_direct>
 #include <events>
+#include <colors>
 
 // Charges that land against a wall and are cleared instantly
 #define SEQ_INSTANT_NICK 671
@@ -22,6 +23,21 @@
 #define SEQ_LONG_BILL 764
 #define SEQ_LONG_LOUIS 764
 #define SEQ_LONG_FRANCIS 765
+
+// Charges that land against a wall and are cleared instantly
+#define SEQ_NORMAL_NICK 667
+#define SEQ_NORMAL_COACH 656
+#define SEQ_NORMAL_ELLIS 671
+#define SEQ_NORMAL_ROCHELLE 674
+#define SEQ_NORMAL_ZOEY 819
+#define SEQ_NORMAL_BILL 759
+#define SEQ_NORMAL_LOUIS 759
+#define SEQ_NORMAL_FRANCIS 762
+
+#define ZC_CHARGER 6
+#define TEAM_SURVIVOR 2
+#define TEAM_INFECTED 3
+#define TEAM_SPECTATOR 1
 
 // Cvars
 new Handle:cvar_longChargeGetUpFixEnabled = INVALID_HANDLE;
@@ -54,6 +70,7 @@ public OnPluginStart()
 	HookEvent("round_start", Event_RoundStart, EventHookMode_Post);
 	HookEvent("charger_pummel_start", Event_PummelStart, EventHookMode_Post);
 	HookEvent("charger_pummel_end", Event_PummelStart, EventHookMode_Post);
+	HookEvent("player_team", Event_PlayerTeam, EventHookMode_Post);
 	
 	// Cvars
 	cvar_longChargeGetUpFixEnabled = CreateConVar("charger_long_getup_fix", "1", "Enable the long Charger get-up fix?");
@@ -64,6 +81,53 @@ public OnPluginStart()
 // ==========================================
 // ================= Events =================
 // ==========================================
+
+public OnClientDisconnect(client)
+{
+	if (!GetConVarBool(cvar_longChargeGetUpFixEnabled)) return;
+	
+	if (GetClientTeam(client) == TEAM_INFECTED)
+	{
+		ChargerTarget[client] = -1;
+	}
+	else if (GetClientTeam(client) == TEAM_SURVIVOR)
+	{
+		for (new i = 0; i < (MAXPLAYERS+1); i++)
+		{
+			if (ChargerTarget[i] == client)
+			{
+				new newChargerTarget = GetEntDataEnt2(i, 15972);
+				ChargerTarget[i] = newChargerTarget;
+			}
+		}
+	}
+} 
+
+public Event_PlayerTeam(Handle:event, const String:name[], bool:dontBroadcast)
+{ // Wall Slam Charge Checks
+
+	if (!GetConVarBool(cvar_longChargeGetUpFixEnabled)) return;
+
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	if (client <= 0) return;
+	new oldTeam = GetEventInt(event, "oldteam");
+	
+	if (oldTeam == TEAM_INFECTED)
+	{ // Not really needed but better safe than sorry I guess
+		ChargerTarget[client] = -1;
+	}
+	else if (oldTeam == TEAM_SURVIVOR)
+	{
+		for (new i = 0; i < (MAXPLAYERS+1); i++)
+		{
+			if (ChargerTarget[i] == client)
+			{
+				new newChargerTarget = GetEntDataEnt2(i, 15972);
+				ChargerTarget[i] = newChargerTarget;
+			}
+		}
+	}
+}
 
 public PlayClientGetUpAnimation(client)
 {
@@ -118,7 +182,7 @@ public Event_ChargerKilled(Handle:event, const String:name[], bool:dontBroadcast
 		g_gfcSurvivor = GetClientUserId(survivorClient);
 	
 		if (IsPlayingGetUpAnimation(survivorClient, 2))
-		{ // Long Charge Get Up
+		{ // Long Charge Get Up		
 			if (GetConVarBool(cvar_keepLongChargeLongGetUp))
 			{
 				FireGodFrameEvent();
@@ -236,6 +300,7 @@ stock GetSequenceInt(client, type)
 		{
 			case 1: return SEQ_INSTANT_COACH;
 			case 2: return SEQ_LONG_COACH;
+			case 3: return SEQ_NORMAL_COACH;
 		}
 	}
 	else if(StrEqual(survivorModel, "models/survivors/survivor_gambler.mdl", false))
@@ -303,7 +368,7 @@ stock bool:IsCharger(client)
 	if (!IsInfected(client))
 		return false;
 
-	if (GetEntProp(client, Prop_Send, "m_zombieClass") != 6)
+	if (GetEntProp(client, Prop_Send, "m_zombieClass") != ZC_CHARGER)
 		return false;
 
 	return true;
