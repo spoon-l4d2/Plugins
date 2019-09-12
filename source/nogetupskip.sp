@@ -16,10 +16,10 @@ new PlayerAnimations[8][ANIMATION_COUNT] =
 {
 //		Wall Slam 	Ground Slam		Charger		Pounced		Tank Punch	Tank Rock	Tank Fly
 	{	671, 		672, 			667,		620,		630,		627,		629	}, // Nick
-	{	660, 		661, 			656,		620,		630,		627,		629	}, // Coach
+	{	660, 		661, 			656,		621,		630,		627,		629	}, // Coach
 	{	675, 		676, 			671,		625,		635,		632,		634	}, // Ellis
 	{	678, 		679, 			674,		629,		638,		635,		637	}, // Rochelle
-	{	766, 		765, 			762, 		531,		541,		538,		540	}, // Francis
+	{	766, 		767, 			762, 		531,		541,		538,		540	}, // Francis
 	{	763, 		764, 			759,		528,		538,		535,		537	}, // Louis
 	{	763, 		764, 			759,		528,		538,		535,		537	}, // Bill
 	{	823, 		824, 			819,		537,		547,		544,		546	}  // Zoey
@@ -109,7 +109,7 @@ public bool:CheckAnimations(client)
 		arrayIndex = ARRAY_INDEX_FRANCIS;
 	}
 	
-	if (arrayIndex < -1) return false;
+	if (arrayIndex == -1) return false;
 	
 	for (new index = 0; index < ANIMATION_COUNT; index++)
 	{
