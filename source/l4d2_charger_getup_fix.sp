@@ -3,6 +3,8 @@
 #include <l4d2_direct>
 #include <events>
 #include <colors>
+#include <godframecontrol>
+
 
 // Charges that land against a wall and are cleared instantly
 #define SEQ_INSTANT_NICK 671
@@ -35,9 +37,8 @@ new Handle:cvar_keepWallSlamLongGetUp = INVALID_HANDLE;
 new Handle:cvar_keepLongChargeLongGetUp = INVALID_HANDLE;
 
 // Fake godframe event variables
-new g_gfcSurvivor;
-new g_gfcCharger;
-new g_gfcRescuer;
+new Handle:g_hLongChargeDuration;
+new Handle:g_hChargeDuration;
 
 // Variables
 new ChargerTarget[MAXPLAYERS+1];
@@ -61,6 +62,10 @@ public OnPluginStart()
 	HookEvent("charger_pummel_start", Event_PummelStart, EventHookMode_Post);
 	HookEvent("charger_pummel_end", Event_PummelStart, EventHookMode_Post);
 	HookEvent("player_team", Event_PlayerTeam, EventHookMode_Post);
+	
+	g_hChargeDuration = FindConVar("gfc_charger_duration");
+	g_hLongChargeDuration = CreateConVar("gfc_long_charger_duration", "2.4", "God frame duration for long charger getup animations");
+	
 	
 	// Cvars
 	cvar_longChargeGetUpFixEnabled = CreateConVar("charger_long_getup_fix", "1", "Enable the long Charger get-up fix?");
@@ -129,15 +134,6 @@ public CancelGetUpAnimation(client)
 	SetEntPropFloat(client, Prop_Send, "m_flCycle", 1000.0);
 }
 
-public FireGodFrameEvent()
-{
-	Event fakeGodFrameEvent = CreateEvent("charger_pummel_end", true);
-	fakeGodFrameEvent.SetInt("userid", g_gfcCharger);
-	fakeGodFrameEvent.SetInt("victim", g_gfcSurvivor);
-	fakeGodFrameEvent.SetInt("rescuer", g_gfcRescuer);
-	fakeGodFrameEvent.Fire(true);
-}
-
 public Event_RoundStart(Handle:event, const String:name[], bool:dontBroadcast)
 {	
 	for (new i = 0; i < MAXPLAYERS+1; i++)
@@ -167,34 +163,31 @@ public Event_ChargerKilled(Handle:event, const String:name[], bool:dontBroadcast
 
 	if (survivorClient > 0 && chargerClient > 0)
 	{
-		// God Frame Event Variables
-		g_gfcRescuer = GetEventInt(event, "attacker");
-		g_gfcSurvivor = GetClientUserId(survivorClient);
-	
 		if (IsPlayingGetUpAnimation(survivorClient, 2))
 		{ // Long Charge Get Up		
+		
 			if (GetConVarBool(cvar_keepLongChargeLongGetUp))
 			{
-				FireGodFrameEvent();
+				GiveClientGodFrames(survivorClient, GetConVarFloat(g_hChargeDuration), 6);
 			}
 			else
 			{
 				CancelGetUpAnimation(survivorClient)
 				PlayClientGetUpAnimation(survivorClient);
-				FireGodFrameEvent();
+				GiveClientGodFrames(survivorClient, GetConVarFloat(g_hLongChargeDuration), 6);
 			}
 		} 
 		else if (IsPlayingGetUpAnimation(survivorClient, 1))
 		{ // Wall Slam Get Up
 			if (GetConVarBool(cvar_keepWallSlamLongGetUp))
 			{
-				FireGodFrameEvent();
+				GiveClientGodFrames(survivorClient, GetConVarFloat(g_hChargeDuration), 6);
 			}
 			else
 			{
 				CancelGetUpAnimation(survivorClient)
 				PlayClientGetUpAnimation(survivorClient);
-				FireGodFrameEvent();
+				GiveClientGodFrames(survivorClient, GetConVarFloat(g_hLongChargeDuration), 6);
 			}
 		}
 		else
@@ -202,8 +195,14 @@ public Event_ChargerKilled(Handle:event, const String:name[], bool:dontBroadcast
 			// There's a weird case, where the game won't register the client as playing the animation, it's once in a blue moon
 			CreateTimer(0.02, BlueMoonCaseCheck, survivorClient);
 		}
-		ChargerTarget[chargerClient] = -1;
+		
+		CreateTimer(0.03, ResetChargerTarget, chargerClient);
 	}
+}
+
+public Action:ResetChargerTarget(Handle:timer, client)
+{
+	ChargerTarget[client] = -1;
 }
 
 public Action:BlueMoonCaseCheck(Handle:timer, survivorClient)
@@ -212,26 +211,26 @@ public Action:BlueMoonCaseCheck(Handle:timer, survivorClient)
 	{ // Long Charge Get Up
 		if (GetConVarBool(cvar_keepLongChargeLongGetUp))
 		{
-			FireGodFrameEvent();
+			GiveClientGodFrames(survivorClient, GetConVarFloat(g_hChargeDuration), 6);
 		}
 		else
 		{
 			CancelGetUpAnimation(survivorClient)
 			PlayClientGetUpAnimation(survivorClient);
-			FireGodFrameEvent();
+			GiveClientGodFrames(survivorClient, GetConVarFloat(g_hLongChargeDuration), 6);
 		}
 	} 
 	else if (IsPlayingGetUpAnimation(survivorClient, 1))
 	{ // Wall Slam Get Up
 		if (GetConVarBool(cvar_keepWallSlamLongGetUp))
 		{
-			FireGodFrameEvent();
+			GiveClientGodFrames(survivorClient, GetConVarFloat(g_hChargeDuration), 6);
 		}
 		else
 		{
 			CancelGetUpAnimation(survivorClient)
 			PlayClientGetUpAnimation(survivorClient);
-			FireGodFrameEvent();
+			GiveClientGodFrames(survivorClient, GetConVarFloat(g_hLongChargeDuration), 6);
 		}
 	}
 }
@@ -263,12 +262,6 @@ public Event_PlayerHurt(Handle:event, const String:name[], bool:dontBroadcast)
 		chargerClient = GetClientOfUserId(chargerUserId);
 		
 	if (!IsCharger(chargerClient) && !IsSurvivor(survivorClient)) return;
-
-	// God Frame Variables
-	if (survivorClient > 0)
-		g_gfcSurvivor = GetClientUserId(survivorClient);
-	if (chargerClient > 0)
-		g_gfcCharger = GetClientUserId(chargerClient);
 	
 	ChargerTarget[chargerClient] = survivorClient; 
 }
