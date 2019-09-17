@@ -64,7 +64,7 @@ public OnPluginStart()
 	HookEvent("player_team", Event_PlayerTeam, EventHookMode_Post);
 	
 	g_hChargeDuration = FindConVar("gfc_charger_duration");
-	g_hLongChargeDuration = CreateConVar("gfc_long_charger_duration", "2.4", "God frame duration for long charger getup animations");
+	g_hLongChargeDuration = CreateConVar("gfc_long_charger_duration", "2.2", "God frame duration for long charger getup animations");
 	
 	
 	// Cvars
@@ -196,7 +196,7 @@ public Event_ChargerKilled(Handle:event, const String:name[], bool:dontBroadcast
 			CreateTimer(0.02, BlueMoonCaseCheck, survivorClient);
 		}
 		
-		CreateTimer(0.03, ResetChargerTarget, chargerClient);
+		CreateTimer(0.06, ResetChargerTarget, chargerClient);
 	}
 }
 

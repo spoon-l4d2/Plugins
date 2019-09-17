@@ -157,7 +157,8 @@ public void OnClientPutInServer(int client)
 public Action:WitchCMDMessage(Handle timer, any serial)
 {
 	int client = GetClientFromSerial(serial);
-	if (client == 0) return Plugin_Stop;
+	if (!client) return Plugin_Stop;
+	if (IsClientInGame(client)) return Plugin_Stop;
 	if (!InSecondHalfOfRound() && IsInReady()){
 		CPrintToChat(client, "{green}<{blue}WitchVoter{green}>{default} You can use {green}`!witchvote`{default} to call a vote to toggle on/off the Witch!");
 	}
@@ -172,6 +173,7 @@ public Action:VoteWitchCommand(client, args){
 
 	// Just In Case :)
 	if (!client) return Plugin_Handled;
+	if (IsClientInGame(client)) return Plugin_Handled;
 	
 	// Check if round is in second half
 	if (!WitchVoteAllowed()) {
