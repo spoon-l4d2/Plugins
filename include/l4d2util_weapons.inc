@@ -4,27 +4,15 @@
 #define l4d2_weapons_inc_
 
 #define GETWEAPONNAME(%0) (IsValidWeaponId(WeaponId:(%0)) ? (WeaponNames[_:(%0)]) : "")
-#define GETMELEEWEAPONNAME(%0) (IsValidWeaponId(MeleeWeaponId:(%0)) ? (MeleeWeaponNames[_:(%0)]) : "")
 #define GETWEAPONMODEL(%0) (HasValidWeaponModel(WeaponId:(%0)) ? (WeaponModels[_:(%0)]) : "")
-#define GETMELEEWEAPONMODEL(%0) (HasValidWeaponModel(MeleeWeaponId:(%0)) ? (MeleeWeaponModels[_:(%0)]) : "")
 
 static Handle:hWeaponNamesTrie = INVALID_HANDLE;
-static Handle:hMeleeWeaponNamesTrie = INVALID_HANDLE;
-static Handle:hMeleeWeaponModelsTrie = INVALID_HANDLE;
 stock InitWeaponNamesTrie()
 {
     hWeaponNamesTrie = CreateTrie();
     for(new i = 0; i < _:WeaponId; i++)
     {
         SetTrieValue(hWeaponNamesTrie, WeaponNames[WeaponId:i], i);
-    }
-
-    hMeleeWeaponNamesTrie = CreateTrie();
-    hMeleeWeaponModelsTrie = CreateTrie();
-    for (new i = 0; i < _:MeleeWeaponId; ++i)
-    {
-        SetTrieValue(hMeleeWeaponNamesTrie, MeleeWeaponNames[MeleeWeaponId:i], i);
-        SetTrieString(hMeleeWeaponModelsTrie, MeleeWeaponModels[MeleeWeaponId:i], MeleeWeaponNames[MeleeWeaponId:i]);
     }
 }
 
@@ -35,12 +23,8 @@ stock InitWeaponNamesTrie()
  * @param wepid        WeaponId to check for validity
  * @return True if wepid is valid, false otherwise.
  */
-stock bool:IsValidWeaponId({WeaponId, MeleeWeaponId}:wepid, tagType = tagof(wepid))
+stock bool:IsValidWeaponId(WeaponId:wepid)
 {
-    if (tagType == tagof(MeleeWeaponId))
-    {
-        return MeleeWeaponId:wepid >= WEPID_MELEE_NONE && MeleeWeaponId:wepid < MeleeWeaponId;
-    }
     return wepid >= WEPID_NONE && wepid < WeaponId;
 }
 
@@ -62,12 +46,8 @@ stock GetSlotFromWeaponId(WeaponId:wepid)
  * @param wepid        WeaponId to check for a known weapon model for.
  * @return True if a valid weapon model exists for wepid, false otherwise.
  */
-stock bool:HasValidWeaponModel({WeaponId, MeleeWeaponId}:wepid, tagType = tagof(wepid))
+stock bool:HasValidWeaponModel(WeaponId:wepid)
 {
-    if (tagType == tagof(MeleeWeaponId))
-    {
-        return IsValidWeaponId(MeleeWeaponId:wepid) && MeleeWeaponModels[MeleeWeaponId:wepid][0] != '\0';
-    }
     return IsValidWeaponId(wepid) && WeaponModels[wepid][0] != '\0';
 }
 
@@ -99,16 +79,9 @@ stock WeaponId:WeaponNameToId(const String:weaponName[])
  * @param length        Max length which can be written to the buffer.
  * @return                Number of bytes written to buffer, or 0 for invalid weaponId.
  */
-stock GetWeaponName({WeaponId, MeleeWeaponId}:wepid, String:nameBuffer[], length, tagType = tagof(wepid))
+stock GetWeaponName(WeaponId:wepid, String:nameBuffer[], length)
 {
-    if (tagType == tagof(MeleeWeaponId))
-    {
-        strcopy(nameBuffer, length, GETMELEEWEAPONNAME(wepid));
-    }
-    else
-    {
-        strcopy(nameBuffer, length, GETWEAPONNAME(wepid));
-    }
+    strcopy(nameBuffer, length, GETWEAPONNAME(wepid));
 }
 
 /**
@@ -120,16 +93,9 @@ stock GetWeaponName({WeaponId, MeleeWeaponId}:wepid, String:nameBuffer[], length
  * @param length        Max length which can be written to the buffer.
  * @return                Number of bytes written to buffer, or 0 for invalid weaponid or no weapon model available.
  */
-stock GetWeaponModel({WeaponId, MeleeWeaponId}:wepid, String:modelBuffer[], length, tagType = tagof(wepid))
+stock GetWeaponModel(WeaponId:wepid, String:modelBuffer[], length)
 {
-    if (tagType == tagof(MeleeWeaponId))
-    {
-        strcopy(modelBuffer, length, GETMELEEWEAPONMODEL(wepid));
-    }
-    else
-    {
-        strcopy(modelBuffer, length, GETWEAPONMODEL(wepid));
-    }
+    strcopy(modelBuffer, length, GETWEAPONMODEL(wepid));
 }
 
 /**
@@ -164,78 +130,6 @@ stock WeaponId:IdentifyWeapon(entity)
     }
     
     return WeaponNameToId(class);
-}
-
-// Helper function used for getting an entity's internal melee name
-stock bool:GetMeleeWeaponNameFromEntity(entity, String:buffer[], length) {
-    decl String:classname[64];
-    if (!IsValidEdict(entity) || ! GetEdictClassname(entity, classname, sizeof(classname)))
-    {
-        return false;
-    }
-
-    if (StrEqual(classname, "weapon_melee_spawn"))
-    {
-        if (hMeleeWeaponModelsTrie == INVALID_HANDLE)
-        {
-            InitWeaponNamesTrie();
-        }
-
-        decl String:sModelName[128];
-        GetEntPropString(entity, Prop_Data, "m_ModelName", sModelName, sizeof(sModelName));
-
-        // Strip models directory
-        if (strncmp(sModelName, "models/", 7, false) == 0)
-        {
-            strcopy(sModelName, sizeof(sModelName), sModelName[6]);
-        }
-
-        if (GetTrieString(hMeleeWeaponModelsTrie, sModelName, buffer, length))
-        {
-            return true;
-        }
-        return false;
-    }
-    else if (StrEqual(classname, "weapon_melee"))
-    {
-        GetEntPropString(entity, Prop_Data, "m_strMapSetScriptName", buffer, length);
-        return true;
-    }
-
-    return false;
-}
-
-/**
- * Identifies a melee weapon spawn or weapon entity as a MeleeWeaponId
- * @remark Should work on most weapon ents--even spawns, singles, held, etc.
- *
- * @param entity        Index of entity to identify
- * @return MeleeWeaponId for the entity if it is a weapon, WEPID_MELEE_NONE otherwise
- */
-stock MeleeWeaponId:IdentifyMeleeWeapon(entity)
-{
-    if (IdentifyWeapon(entity) != WEPID_MELEE)
-    {
-        return WEPID_MELEE_NONE;
-    }
-
-    decl String:sName[128];
-    if (! GetMeleeWeaponNameFromEntity(entity, sName, sizeof(sName)))
-    {
-        return WEPID_MELEE_NONE;
-    }
-
-    if (hMeleeWeaponNamesTrie == INVALID_HANDLE)
-    {
-        InitWeaponNamesTrie();
-    }
-
-    new id;
-    if(GetTrieValue(hMeleeWeaponNamesTrie, sName, id))
-    {
-        return MeleeWeaponId:id;
-    }
-    return WEPID_MELEE_NONE;
 }
 
 /**

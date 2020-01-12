@@ -256,6 +256,13 @@ stock Address:L4D2Direct_GetMapMaxFlowDistanceAddr()
 }
 
 /**
+ * Gets the address of an entity to allow getting/setting data directly with offsets
+ *
+ * @param entity
+ * @return Address of entity or Address_Null on failure
+ */
+
+/**
  * Gets entity data at a given offset
  *
  * @param entity
