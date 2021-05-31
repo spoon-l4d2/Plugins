@@ -1,8 +1,7 @@
-#if defined godframesincluded
-  #endinput
+#if defined  _godframecontrol_included_
+    #endinput
 #endif
-
-#define godframesincluded
+#define _godframecontrol_included_
 
 /**
  * Gives a specified client god frames for x amount of time
@@ -14,14 +13,18 @@
  */
 native void GiveClientGodFrames(int client, Float:time, int zclass);
 
-public SharedPlugin:godframescontrol=
+public SharedPlugin:__pl_godframecontrol =
 {
-        name = "l4d2_godframes_control_merge",
-        file = "l4d2_godframes_control_merge.smx",
-        required = 1,
+    name = "l4d2_godframes_control_merge",
+    file = "l4d2_godframes_control_merge.smx",
+#if defined REQUIRE_PLUGIN
+    required = 1,
+#else
+    required = 0,
+#endif
 };
 
-public godframescontrol_SetNTVOptional()
+public __pl_godframecontrol_SetNTVOptional()
 {
     MarkNativeAsOptional("GiveClientGodFrames");
 }

@@ -2,12 +2,12 @@
   Check if entity is in a saferoom
   returns bool (errors/incorrect data returns false)
 */
-native SAFEDETECT_IsEntityInStartSaferoom(entity);
-native SAFEDETECT_IsEntityInEndSaferoom(entity);
+native bool SAFEDETECT_IsEntityInStartSaferoom(int entity);
+native bool SAFEDETECT_IsEntityInEndSaferoom(int entity);
 
 /*
   Check if player (client) is in a saferoom
   returns bool (errors/incorrect data returns false)
 */
-native SAFEDETECT_IsPlayerInStartSaferoom(client);
-native SAFEDETECT_IsPlayerInEndSaferoom(client);
+native bool SAFEDETECT_IsPlayerInStartSaferoom(int client);
+native bool SAFEDETECT_IsPlayerInEndSaferoom(int client);
